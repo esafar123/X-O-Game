@@ -1,0 +1,36 @@
+<!doctype html>
+<html><head><meta charset="utf-8">
+<link rel="stylesheet" href="../colors_and_type.css">
+<style>
+  body { padding: 24px; background: var(--bg); display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+  .cell {
+    aspect-ratio: 1 / 1;
+    border-radius: var(--r-xl);
+    border: 2px solid rgba(255,255,255,0.20);
+    background: var(--surface);
+    display: grid; place-items: center;
+    position: relative;
+  }
+  .cell.x { box-shadow: var(--glow-x); border-color: rgba(255,46,77,0.5); }
+  .cell.o { box-shadow: var(--glow-o); border-color: rgba(0,229,255,0.5); }
+  .cell.hover { border-color: var(--flood-500); box-shadow: 0 0 24px rgba(212,255,0,0.25); }
+  .lbl-tag {
+    position: absolute; top: 8px; left: 10px;
+    font-family: var(--font-mono); font-size: 9px; color: var(--fg-3);
+    text-transform: uppercase; letter-spacing: 0.1em;
+  }
+</style>
+</head><body>
+<div class="cell"><span class="lbl-tag">empty</span></div>
+<div class="cell hover"><span class="lbl-tag">hover</span></div>
+<div class="cell x"><span class="lbl-tag">X placed</span>
+  <svg width="60%" height="60%" viewBox="0 0 100 100" fill="none"><path d="M22 22 L78 78 M78 22 L22 78" stroke="#ffffff" stroke-width="11" stroke-linecap="round"/></svg>
+</div>
+<div class="cell o"><span class="lbl-tag">O placed</span>
+  <svg width="60%" height="60%" viewBox="0 0 100 100" fill="none"><circle cx="50" cy="50" r="28" stroke="#00e5ff" stroke-width="11"/></svg>
+</div>
+<div class="cell" style="background: rgba(212,255,0,0.10); border-color: var(--flood-500);"><span class="lbl-tag" style="color: var(--flood-500);">winning</span>
+  <svg width="60%" height="60%" viewBox="0 0 100 100" fill="none"><path d="M22 22 L78 78 M78 22 L22 78" stroke="#d4ff00" stroke-width="11" stroke-linecap="round"/></svg>
+</div>
+<div class="cell" style="opacity: 0.4;"><span class="lbl-tag">disabled</span></div>
+</body></html>

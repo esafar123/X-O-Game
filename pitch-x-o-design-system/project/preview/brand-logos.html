@@ -1,0 +1,40 @@
+<!doctype html>
+<html><head><meta charset="utf-8">
+<link rel="stylesheet" href="../colors_and_type.css">
+<style>
+  body { padding: 24px; background: var(--bg); display: grid; grid-template-columns: 1fr 1fr; gap: 16px; align-items: start; }
+  .brand-card {
+    background: var(--surface);
+    border-radius: var(--r-lg);
+    border: 1px solid var(--border);
+    padding: 24px;
+    display: flex; align-items: center; justify-content: center;
+    min-height: 140px;
+  }
+  .pitch-bg-card {
+    background:
+      radial-gradient(ellipse at 50% -10%, rgba(212,255,0,0.10), transparent 55%),
+      repeating-linear-gradient(90deg, var(--pitch-800) 0px, var(--pitch-800) 30px, var(--pitch-700) 30px, var(--pitch-700) 60px);
+    border-radius: var(--r-lg);
+    border: 1px solid var(--border);
+    padding: 24px;
+    min-height: 140px;
+    display: flex; align-items: center; justify-content: center;
+    color: var(--fg-2);
+    font-family: var(--font-headline); font-weight: 700;
+    text-transform: uppercase; letter-spacing: 0.1em; font-size: 13px;
+  }
+</style>
+</head><body>
+<div class="brand-card">
+  <img src="../assets/logo.svg" width="220" alt="Pitch logo">
+</div>
+<div class="brand-card" style="background: var(--pitch-900);">
+  <img src="../assets/logomark.svg" width="80" alt="Pitch mark">
+</div>
+<div class="pitch-bg-card">.pitch-bg · grass stripes + vignette</div>
+<div class="brand-card" style="gap: 24px;">
+  <svg width="60" height="60" viewBox="0 0 100 100" fill="none" style="filter: drop-shadow(0 0 12px rgba(255,255,255,0.5));"><path d="M22 22 L78 78 M78 22 L22 78" stroke="#ffffff" stroke-width="11" stroke-linecap="round"/></svg>
+  <svg width="60" height="60" viewBox="0 0 100 100" fill="none" style="filter: drop-shadow(0 0 12px rgba(0,229,255,0.5));"><circle cx="50" cy="50" r="28" stroke="#00e5ff" stroke-width="11"/></svg>
+</div>
+</body></html>

@@ -1,0 +1,37 @@
+<!doctype html>
+<html><head><meta charset="utf-8">
+<link rel="stylesheet" href="../colors_and_type.css">
+<style>
+  body { padding: 24px; background: var(--bg); display: flex; flex-direction: column; gap: 14px; }
+  .row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+  .badge {
+    font-family: var(--font-headline); font-weight: 800; text-transform: uppercase;
+    letter-spacing: 0.08em; font-size: 11px;
+    padding: 6px 12px; border-radius: var(--r-pill);
+    display: inline-flex; align-items: center; gap: 6px;
+  }
+  .badge.live { background: var(--eliminate); color: white; }
+  .badge.win { background: rgba(74, 222, 128, 0.15); color: var(--win); border: 1px solid rgba(74, 222, 128, 0.4); }
+  .badge.loss { background: rgba(255, 46, 77, 0.15); color: var(--loss); border: 1px solid rgba(255, 46, 77, 0.4); }
+  .badge.draw { background: rgba(240, 255, 90, 0.12); color: var(--draw); border: 1px solid rgba(240, 255, 90, 0.4); }
+  .badge.online { background: var(--surface); color: var(--fg-1); border: 1px solid var(--border); }
+  .badge.online .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--win); box-shadow: 0 0 8px var(--win); }
+  .badge.flood { background: var(--flood-500); color: var(--pitch-900); }
+  .badge.team-x { background: rgba(255,255,255,0.10); color: var(--x-chalk); border: 1px solid rgba(255,255,255,0.30); }
+  .badge.team-o { background: rgba(0,229,255,0.15); color: var(--o-cyan); border: 1px solid rgba(0,229,255,0.4); }
+</style>
+</head><body>
+<div class="row">
+  <span class="badge live">● Live</span>
+  <span class="badge win">Won 2-1</span>
+  <span class="badge loss">Lost 0-2</span>
+  <span class="badge draw">Draw 1-1</span>
+</div>
+<div class="row">
+  <span class="badge online"><span class="dot"></span>Online</span>
+  <span class="badge online"><span class="dot" style="background: var(--warn); box-shadow: 0 0 8px var(--warn);"></span>In match</span>
+  <span class="badge flood">★ MVP</span>
+  <span class="badge team-x">Team X</span>
+  <span class="badge team-o">Team O</span>
+</div>
+</body></html>

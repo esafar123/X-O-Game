@@ -1,0 +1,223 @@
+/* ============================================================
+   PITCH — X&O Design System
+   Esports stadium aesthetic. Dark field, white markings,
+   neon yellow floodlight, with team-red and team-cyan for X/O.
+   ============================================================ */
+
+@import url("https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Barlow+Condensed:ital,wght@0,400;0,500;0,600;0,700;0,800;1,700;1,800&family=Barlow:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600;700&display=swap");
+
+:root {
+  /* ------------------------------------------------------------
+     COLOR — base palette
+     "Pitch" = the football/soccer field. Grass at night.
+     ------------------------------------------------------------ */
+
+  /* Field — primary backgrounds (the grass under stadium lights) */
+  --pitch-900: #050a08;   /* deepest shadow, stadium void   */
+  --pitch-800: #0a1612;   /* base background                */
+  --pitch-700: #0f211b;   /* card / surface                 */
+  --pitch-600: #14302a;   /* elevated surface               */
+  --pitch-500: #1c4a3e;   /* mid-grass                      */
+  --pitch-400: #2a6b58;   /* highlight grass strip          */
+
+  /* Chalk — white field markings */
+  --chalk-100: #ffffff;
+  --chalk-200: #f4f7f2;
+  --chalk-300: #d9e0d4;
+  --chalk-400: #9aa89a;
+  --chalk-500: #6a7868;
+  --chalk-600: #44504a;
+
+  /* Floodlight — primary accent, neon stadium yellow */
+  --flood-100: #fbffd4;
+  --flood-300: #f0ff5a;
+  --flood-500: #d4ff00;   /* the signature glow color       */
+  --flood-600: #a8cc00;
+  --flood-700: #6e8500;
+
+  /* Team colors — X and O
+     NOTE: Red is RESERVED for loss / elimination. The X mark is
+     chalk-white (the home team's "kit"), and O is cyan (away). */
+  --x-chalk:  #ffffff;    /* home team — the X mark         */
+  --x-chalk-glow: #f4f7f2;
+  --o-cyan:   #00e5ff;    /* away team — the O mark         */
+  --o-cyan-glow: #5cf2ff;
+
+  /* Elimination — used ONLY when a player loses and must
+     leave the match. Never used for a team or a brand element. */
+  --eliminate:     #ff2e4d;
+  --eliminate-bg:  rgba(255, 46, 77, 0.12);
+
+  /* Semantic */
+  --win:    #4ade80;
+  --loss:   #ff2e4d;       /* same red — loss is elimination  */
+  --draw:   #f0ff5a;
+  --warn:   #ffb020;
+  --info:   #00e5ff;
+
+  /* ------------------------------------------------------------
+     COLOR — semantic / functional
+     ------------------------------------------------------------ */
+  --bg:           var(--pitch-800);
+  --bg-deep:      var(--pitch-900);
+  --surface:      var(--pitch-700);
+  --surface-2:    var(--pitch-600);
+  --surface-line: rgba(255, 255, 255, 0.08);
+
+  --fg-1:         var(--chalk-100);   /* primary text     */
+  --fg-2:         var(--chalk-300);   /* secondary text   */
+  --fg-3:         var(--chalk-400);   /* tertiary / meta  */
+  --fg-4:         var(--chalk-500);   /* disabled         */
+
+  --accent:       var(--flood-500);
+  --accent-fg:    var(--pitch-900);   /* on accent bg     */
+
+  --border:       rgba(255, 255, 255, 0.10);
+  --border-strong:rgba(255, 255, 255, 0.22);
+
+  /* Glow shadows — used on hovers, active marks */
+  --glow-flood:     0 0 24px rgba(212, 255, 0, 0.45), 0 0 60px rgba(212, 255, 0, 0.18);
+  --glow-x:         0 0 24px rgba(255, 255, 255, 0.45), 0 0 60px rgba(255, 255, 255, 0.15);
+  --glow-o:         0 0 24px rgba(0, 229, 255, 0.55),  0 0 60px rgba(0, 229, 255, 0.20);
+  --glow-eliminate: 0 0 24px rgba(255, 46, 77, 0.55),  0 0 60px rgba(255, 46, 77, 0.22);
+
+  /* ------------------------------------------------------------
+     TYPE
+     Bebas Neue — display / scoreboard / numbers
+     Barlow Condensed — headlines, athletic feel
+     Barlow — body, UI labels
+     JetBrains Mono — timers, stats, scores
+     ------------------------------------------------------------ */
+  --font-display: "Bebas Neue", "Barlow Condensed", Impact, sans-serif;
+  --font-headline:"Barlow Condensed", "Oswald", Impact, sans-serif;
+  --font-body:    "Barlow", "Inter", system-ui, sans-serif;
+  --font-mono:    "JetBrains Mono", "SF Mono", Consolas, monospace;
+
+  /* Type scale (mobile-first) */
+  --t-display-1: 88px;
+  --t-display-2: 64px;
+  --t-h1:        40px;
+  --t-h2:        28px;
+  --t-h3:        22px;
+  --t-body:      16px;
+  --t-small:     14px;
+  --t-meta:      12px;
+  --t-micro:     10px;
+
+  --lh-tight:    0.92;
+  --lh-snug:     1.1;
+  --lh-body:     1.45;
+
+  /* ------------------------------------------------------------
+     SPACING / RADII / SHADOW
+     ------------------------------------------------------------ */
+  --s-1:   4px;
+  --s-2:   8px;
+  --s-3:  12px;
+  --s-4:  16px;
+  --s-5:  20px;
+  --s-6:  24px;
+  --s-8:  32px;
+  --s-10: 40px;
+  --s-12: 48px;
+  --s-16: 64px;
+
+  --r-xs:  4px;
+  --r-sm:  8px;
+  --r-md: 12px;
+  --r-lg: 18px;
+  --r-xl: 28px;
+  --r-pill: 999px;
+
+  --shadow-1: 0 1px 2px rgba(0,0,0,0.35);
+  --shadow-2: 0 6px 18px rgba(0,0,0,0.45), 0 0 0 1px rgba(255,255,255,0.04) inset;
+  --shadow-3: 0 18px 42px rgba(0,0,0,0.55), 0 0 0 1px rgba(255,255,255,0.05) inset;
+  --shadow-pop: 0 8px 0 0 var(--pitch-900); /* athletic hard-shadow */
+
+  /* Animation */
+  --ease-out: cubic-bezier(.18,.9,.32,1);
+  --ease-in:  cubic-bezier(.55,.05,.7,.2);
+  --ease-pop: cubic-bezier(.34,1.56,.64,1);  /* overshoot bounce */
+  --dur-fast: 120ms;
+  --dur-base: 220ms;
+  --dur-slow: 420ms;
+}
+
+/* ============================================================
+   ELEMENT-LEVEL BASELINE
+   ============================================================ */
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  padding: 0;
+  background: var(--bg);
+  color: var(--fg-1);
+  font-family: var(--font-body);
+  font-size: var(--t-body);
+  line-height: var(--lh-body);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+h1, h2, h3, h4 {
+  font-family: var(--font-headline);
+  font-weight: 800;
+  letter-spacing: 0.01em;
+  line-height: var(--lh-snug);
+  margin: 0;
+  text-transform: uppercase;
+}
+
+h1 { font-size: var(--t-h1); letter-spacing: -0.01em; }
+h2 { font-size: var(--t-h2); }
+h3 { font-size: var(--t-h3); }
+
+.display-1, .display-2 {
+  font-family: var(--font-display);
+  font-weight: 400;
+  line-height: var(--lh-tight);
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+.display-1 { font-size: var(--t-display-1); }
+.display-2 { font-size: var(--t-display-2); }
+
+.mono, code, kbd {
+  font-family: var(--font-mono);
+  font-feature-settings: "tnum" 1;
+}
+
+.label {
+  font-family: var(--font-headline);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-size: var(--t-meta);
+  color: var(--fg-3);
+}
+
+.score {
+  font-family: var(--font-mono);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.02em;
+}
+
+p { margin: 0 0 var(--s-4); color: var(--fg-2); }
+
+/* ============================================================
+   STADIUM BACKDROP (decorative, optional via .pitch-bg class)
+   Subtle field stripes + vignette.
+   ============================================================ */
+.pitch-bg {
+  background:
+    radial-gradient(ellipse at 50% -10%, rgba(212,255,0,0.10), transparent 55%),
+    repeating-linear-gradient(
+      90deg,
+      var(--pitch-800) 0px,
+      var(--pitch-800) 40px,
+      var(--pitch-700) 40px,
+      var(--pitch-700) 80px
+    );
+}
