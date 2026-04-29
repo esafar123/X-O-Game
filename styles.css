@@ -1129,3 +1129,102 @@ button { font: inherit; color: inherit; }
   padding: 6px 12px;
   pointer-events: none;
 }
+
+/* ============================================================
+   ADD FRIEND SCREEN
+   ============================================================ */
+
+/* Sections wrapper */
+.af-section {
+  padding: 0 20px 16px;
+}
+
+/* Your own code card */
+.af-my-code {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-card);
+  padding: 14px 16px;
+  margin-top: 6px;
+}
+.af-code-text {
+  font-family: var(--font-mono);
+  font-size: 15px;
+  letter-spacing: 0.12em;
+  color: var(--flood-500);
+  font-weight: 700;
+}
+.af-copy-btn {
+  display: flex; align-items: center; gap: 5px;
+  background: none; border: 1px solid var(--border-strong);
+  border-radius: var(--r-pill);
+  color: var(--fg-2);
+  font-family: var(--font-mono); font-size: 11px;
+  text-transform: uppercase; letter-spacing: 0.08em;
+  padding: 6px 12px; cursor: pointer;
+  min-height: 32px;
+  transition: border-color 0.15s, color 0.15s;
+}
+.af-copy-btn:active { color: var(--flood-500); border-color: var(--flood-500); }
+
+/* Search row */
+.af-search-row {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  margin-top: 6px;
+}
+.af-input {
+  flex: 1;
+  font-family: var(--font-mono) !important;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+.af-input::placeholder { text-transform: none; letter-spacing: 0; }
+
+/* Found player card */
+.af-found-card {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-card);
+  padding: 14px 16px;
+  margin-top: 16px;
+}
+.af-found-info {
+  flex: 1; min-width: 0;
+}
+
+/* Pending request row extras */
+.pending-row { background: rgba(212,255,0,0.04); border-radius: var(--r-card); }
+.pending-actions {
+  display: flex; gap: 6px;
+}
+.pending-actions .friend-action {
+  padding: 8px 12px; font-size: 14px;
+}
+
+/* Empty-state */
+.af-empty {
+  padding: 40px 20px;
+  text-align: center;
+}
+.af-empty-title {
+  font-family: var(--font-headline);
+  font-size: 18px; font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--fg-1);
+  margin-bottom: 8px;
+}
+.af-empty-sub {
+  font-size: 13px;
+  color: var(--fg-3);
+  line-height: 1.5;
+}

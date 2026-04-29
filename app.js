@@ -15,6 +15,7 @@ import "./js/screens/trivia.js";
 import "./js/screens/trivia-mp.js";
 import "./js/screens/home.js";
 import "./js/screens/friends.js";
+import "./js/screens/add-friend.js";
 import "./js/screens/matchmaking.js";
 import "./js/screens/levels.js";
 import "./js/screens/board.js";
