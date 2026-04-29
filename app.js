@@ -225,14 +225,31 @@
     { id: 4, name: "Champions",     desc: "5s clock · Ruthless AI",        stars: 0, total: 3, unlocked: false, progress: 0,   difficulty: "ruthless", clock: 5, lockMsg: "Reach All-Star tier to unlock." },
   ];
 
-  const LB_TOP = [
-    { rk: 1, nm: "Rho.Striker", init: "R", w: 218, win: 81 },
-    { rk: 2, nm: "Anya.B",      init: "A", w: 204, win: 78 },
-    { rk: 3, nm: "Marcus_77",   init: "M", w: 197, win: 76 },
-    { rk: 4, nm: "Jules99",     init: "J", w: 189, win: 73 },
-    { rk: 5, nm: "Kai_GG",      init: "K", w: 180, win: 71 },
-    { rk: 214, nm: "You",       init: "Y", w:  16, win: 75, you: true },
-  ];
+  const LB_DATA = {
+    global: [
+      { rk: 1,   nm: "Rho.Striker", init: "R", w: 218, win: 81 },
+      { rk: 2,   nm: "Anya.B",      init: "A", w: 204, win: 78 },
+      { rk: 3,   nm: "Marcus_77",   init: "M", w: 197, win: 76 },
+      { rk: 4,   nm: "Jules99",     init: "J", w: 189, win: 73 },
+      { rk: 5,   nm: "Kai_GG",      init: "K", w: 180, win: 71 },
+      { rk: 214, nm: "You",         init: "Y", w:  16, win: 75, you: true },
+    ],
+    friends: [
+      { rk: 1, nm: "Marcus_77", init: "M", w: 197, win: 76 },
+      { rk: 2, nm: "Jules99",   init: "J", w: 189, win: 73 },
+      { rk: 3, nm: "Kai_GG",   init: "K", w: 180, win: 71 },
+      { rk: 4, nm: "You",      init: "Y", w:  16, win: 75, you: true },
+    ],
+    weekly: [
+      { rk: 1,  nm: "Anya.B",      init: "A", w: 42, win: 84 },
+      { rk: 2,  nm: "Rho.Striker", init: "R", w: 38, win: 79 },
+      { rk: 3,  nm: "Jules99",     init: "J", w: 31, win: 72 },
+      { rk: 4,  nm: "Marcus_77",   init: "M", w: 27, win: 68 },
+      { rk: 5,  nm: "Kai_GG",      init: "K", w: 19, win: 61 },
+      { rk: 11, nm: "You",         init: "Y", w:  4, win: 75, you: true },
+    ],
+  };
+  const LB_TOP = LB_DATA.global;
 
   const state = {
     screen: "splash",
@@ -609,9 +626,11 @@
         if (cell === "x") cls.push("has-x");
         if (cell === "o") cls.push("has-o");
         if (winning)      cls.push("win");
-        if (cell || result || turn !== userMark) cls.push("disabled");
+        const isDisabled = !!(cell || result || turn !== userMark);
+        if (isDisabled) cls.push("disabled");
         const btn = h("button", {
           class: cls.join(" "), type: "button",
+          disabled: isDisabled,
           onclick: () => userPlace(i),
         });
         if (cell === "x") btn.appendChild(XMark({ size: 56, glow: true }));
@@ -645,6 +664,7 @@
 
     let aiTimer = null;
     function scheduleAi() {
+      if (aiTimer) clearTimeout(aiTimer);
       const delay = 600 + Math.random() * 800;
       aiTimer = setTimeout(() => {
         const i = aiMove(board, aiMark, userMark, league.difficulty);
@@ -771,14 +791,22 @@
     }
     wrap.appendChild(tabs);
 
-    const podium = h("div", { class: "podium" });
-    podium.appendChild(PodiumCol({ rk: 2, nm: "Anya.B",      init: "A", pts: 204, h: 92,  top: false }));
-    podium.appendChild(PodiumCol({ rk: 1, nm: "Rho.Striker", init: "R", pts: 218, h: 120, top: true  }));
-    podium.appendChild(PodiumCol({ rk: 3, nm: "Marcus_77",   init: "M", pts: 197, h: 72,  top: false }));
-    wrap.appendChild(podium);
+    const rows = LB_DATA[state.leaderboardTab] || LB_DATA.global;
+    const top3 = rows.slice(0, 3);
+    const rest = rows.slice(3);
+
+    if (top3.length === 3) {
+      const podium = h("div", { class: "podium" });
+      const byRk = (rk) => top3.find(p => p.rk === rk) || top3[rk - 1];
+      const p2 = byRk(2), p1 = byRk(1), p3 = byRk(3);
+      podium.appendChild(PodiumCol({ rk: p2.rk, nm: p2.nm, init: p2.init, pts: p2.w, h: 92,  top: false }));
+      podium.appendChild(PodiumCol({ rk: p1.rk, nm: p1.nm, init: p1.init, pts: p1.w, h: 120, top: true  }));
+      podium.appendChild(PodiumCol({ rk: p3.rk, nm: p3.nm, init: p3.init, pts: p3.w, h: 72,  top: false }));
+      wrap.appendChild(podium);
+    }
 
     const list = h("div", { class: "list" });
-    for (const p of LB_TOP.slice(3)) {
+    for (const p of rest) {
       list.appendChild(h("div", { class: `lb-row ${p.you ? "you" : ""}` },
         h("div", { class: "rk" }, "#" + p.rk),
         Avatar({ initial: p.init, size: 32 }),
