@@ -23,9 +23,11 @@ import "./js/screens/gameover.js";
 import "./js/screens/leaderboard.js";
 import "./js/screens/settings.js";
 import "./js/screens/profile.js";
+import "./js/screens/challenge.js";
 
 // ── Boot ──
 document.addEventListener("DOMContentLoaded", () => {
-  if (state.joinCode) state.screen = "join";
+  if (state.joinCode)      state.screen = "join";
+  if (state.challengeCode) state.screen = "challenge";
   render();
 });

@@ -33,7 +33,7 @@ SCREENS.profile = () => {
 
   // ── QR code ──────────────────────────────────────────────────────
   if (code !== "—") {
-    const gameUrl = `https://x-o-game-five-jade.vercel.app/?join=${encodeURIComponent(code)}`;
+    const gameUrl = `https://x-o-game-five-jade.vercel.app/?challenge=${encodeURIComponent(code)}`;
     const qrUrl   = `https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(gameUrl)}&bgcolor=050a08&color=d4ff00`;
 
     const copyBtn = h("button", { class: "pbtn ghost code-copy-btn", type: "button",

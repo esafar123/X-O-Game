@@ -3,13 +3,16 @@
 
 import { LEAGUES } from "../data/constants.js";
 
-const storedProfile = JSON.parse(localStorage.getItem("xo_profile") || "null");
-const joinCode      = new URLSearchParams(window.location.search).get("join") || null;
+const storedProfile  = JSON.parse(localStorage.getItem("xo_profile") || "null");
+const params         = new URLSearchParams(window.location.search);
+const joinCode       = params.get("join")      || null;
+const challengeCode  = params.get("challenge") || null;
 
 export const state = {
   screen:          "splash",
   profile:         storedProfile,
   joinCode,
+  challengeCode,
   onboarding:      { nickname: "", gender: "" },
   opponent:        null,
   league:          LEAGUES[1],       // default to Pro Pitch

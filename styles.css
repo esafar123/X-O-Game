@@ -1633,3 +1633,127 @@ button { font: inherit; color: inherit; }
   color: var(--fg-3);
   margin-top: 4px;
 }
+
+/* ──────────────── CHALLENGE SCREEN ──────────────── */
+.chal-body {
+  padding: 0 20px;
+}
+.chal-loading {
+  text-align: center;
+  color: var(--fg-3);
+  font-family: var(--font-body);
+  font-size: 14px;
+  padding: 40px 0;
+}
+.chal-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 32px 20px 24px;
+  gap: 10px;
+}
+.chal-vs {
+  font-family: var(--font-headline);
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: 0.2em;
+  color: var(--flood-500);
+  margin-top: 4px;
+}
+.chal-name {
+  font-family: var(--font-headline);
+  font-size: 34px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--fg-1);
+  line-height: 1;
+}
+.chal-sub {
+  font-family: var(--font-body);
+  font-size: 13px;
+  color: var(--fg-3);
+}
+.chal-status {
+  padding: 12px 20px 0;
+  font-family: var(--font-body);
+  font-size: 13px;
+  text-align: center;
+  min-height: 20px;
+}
+
+/* ── Incoming challenge modal ── */
+.chal-modal {
+  position: absolute;
+  inset: 0;
+  z-index: 400;
+  background: rgba(5, 10, 8, 0.85);
+  backdrop-filter: blur(6px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  animation: fadeIn 0.2s ease;
+}
+@keyframes fadeIn { from { opacity: 0; transform: scale(0.96); } to { opacity: 1; transform: scale(1); } }
+.chal-modal-box {
+  background: var(--surface);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--r-xl);
+  padding: 28px 24px 24px;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  box-shadow: 0 24px 60px rgba(0,0,0,0.5);
+}
+.chal-modal-avatar .avatar {
+  background: var(--surface-2);
+  border: 2px solid var(--flood-500);
+}
+.chal-modal-title {
+  font-family: var(--font-headline);
+  font-size: 26px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--fg-1);
+  margin-top: 4px;
+}
+.chal-modal-sub {
+  font-family: var(--font-body);
+  font-size: 13px;
+  color: var(--fg-3);
+  text-align: center;
+}
+.chal-modal-code {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--fg-4);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  margin-top: 2px;
+}
+.chal-modal-actions {
+  display: flex;
+  gap: 10px;
+  width: 100%;
+  margin-top: 16px;
+}
+.chal-modal-btn {
+  flex: 1;
+  padding: 14px;
+  border: none;
+  border-radius: var(--r-pill);
+  font-family: var(--font-headline);
+  font-size: 14px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  cursor: pointer;
+  transition: opacity 0.15s;
+}
+.chal-modal-btn:active { opacity: 0.8; }
+.chal-modal-btn.accept  { background: var(--flood-500); color: var(--pitch-900); }
+.chal-modal-btn.decline { background: var(--surface-2); color: var(--fg-3); }
