@@ -288,8 +288,8 @@
     lastMatchLengthSec: 0,
     settings: { soundOn: true, hapticsOn: true },
     leaderboardTab: "global",
-    matchChannel: null,   // Supabase Realtime channel for live 1v1
     playerRole:   null,   // "host" | "guest"
+    gameCode:     null,   // invite_code for the current DB-backed game
   };
 
   // ────────────────────────────────────────────────────────────────
@@ -417,8 +417,8 @@
 
     actions.appendChild(PitchButton({
       label: "Accept & Play", variant: "primary", full: true, iconRight: "forward",
-      onClick: () => {
-        // Auto-create a guest profile if the scanner hasn't registered yet
+      onClick: async () => {
+        // Auto-create guest profile if scanner hasn't registered
         if (!state.profile) {
           const POOL = ["Shadow_GK","Night_Striker","Ghost_Winger","Phantom_CF","Dark_Keeper"];
           const nickname    = POOL[Math.floor(Math.random() * POOL.length)];
@@ -428,36 +428,41 @@
           state.profile = profile;
         }
         const myName = state.profile.nickname;
-        state.opponent   = { nm: inviterName, init: inviterName[0]?.toUpperCase() || "?", status: "online", meta: "Via QR invite", stats: "" };
-        state.playerRole = "guest";
-
-        statusMsg.textContent = "Connecting…";
+        statusMsg.textContent = "Looking up game…";
         statusMsg.style.color = "var(--flood-500)";
 
-        let timedOut = false;
-        const timeout = setTimeout(() => {
-          timedOut = true;
-          statusMsg.textContent = "No response — is the host still on the waiting screen?";
-          statusMsg.style.color = "var(--eliminate)";
-        }, 12000);
+        // Find the host's game row
+        const { data: game, error } = await db
+          .from("games").select("*").eq("invite_code", code).single();
 
-        // Subscribe to the shared channel and announce arrival
-        const ch = db.channel(`match:${code}`)
-          .on("broadcast", { event: "host_ack" }, () => {
-            if (timedOut) return;
-            clearTimeout(timeout);
-            state.matchChannel = ch;
-            state.score = { x: 0, o: 0 };
-            go("board_mp");
-          })
-          .subscribe(async (status) => {
-            if (status === "SUBSCRIBED") {
-              await ch.send({
-                type: "broadcast", event: "guest_joined",
-                payload: { nickname: myName },
-              });
-            }
-          });
+        if (error || !game) {
+          statusMsg.textContent = "Game not found — ask the host to re-open their waiting screen.";
+          statusMsg.style.color = "var(--eliminate)";
+          return;
+        }
+        if (game.status !== "waiting") {
+          statusMsg.textContent = "This game already started or was cancelled.";
+          statusMsg.style.color = "var(--eliminate)";
+          return;
+        }
+
+        statusMsg.textContent = "Joining…";
+        const { error: joinErr } = await db
+          .from("games")
+          .update({ guest_name: myName, status: "active" })
+          .eq("invite_code", code);
+
+        if (joinErr) {
+          statusMsg.textContent = "Failed to join — try again.";
+          statusMsg.style.color = "var(--eliminate)";
+          return;
+        }
+
+        state.opponent   = { nm: game.host_name, init: game.host_name[0]?.toUpperCase() || "?", status: "online", meta: "Via QR invite", stats: "" };
+        state.playerRole = "guest";
+        state.gameCode   = code;
+        state.score      = { x: 0, o: 0 };
+        go("board_mp");
       },
     }));
 
@@ -589,40 +594,59 @@
     return wrap;
   };
 
-  // ── LOBBY (QR creator waits for friend to scan) ──
+  // ── LOBBY (QR creator waits — polls DB for guest) ──
   SCREENS.lobby = () => {
     const code   = state.profile?.friend_code || "";
     const myName = state.profile?.nickname    || "You";
+    const statusEl = h("div", { class: "tick" }, "Creating match…");
+    let pollId = null;
 
-    // Status element declared first so the async handler can update it
-    const statusEl = h("div", { class: "tick" }, code);
-
+    // Cancel cleans up the poll and removes the game row
     const cancelFn = () => {
-      ch.unsubscribe();
-      state.matchChannel = null;
+      clearInterval(pollId);
+      db.from("games").update({ status: "cancelled" }).eq("invite_code", code);
+      state.gameCode = null;
       go("home");
     };
+    onUnmount(() => clearInterval(pollId));
 
-    // Open the Supabase Realtime channel immediately
-    const ch = db.channel(`match:${code}`)
-      .on("broadcast", { event: "guest_joined" }, ({ payload }) => {
-        const guestName = payload.nickname || "Guest";
-        state.opponent   = { nm: guestName, init: guestName[0]?.toUpperCase() || "?", status: "online", meta: "Via QR invite", stats: "" };
-        state.playerRole = "host";
-        state.matchChannel = ch;
-        statusEl.textContent = `${guestName} accepted — starting…`;
-        // Acknowledge so the guest navigates too
-        ch.send({ type: "broadcast", event: "host_ack", payload: { hostNickname: myName } });
-        setTimeout(() => { state.score = { x: 0, o: 0 }; go("board_mp"); }, 900);
-      });
-    ch.subscribe();
+    // Write the game row to the database
+    db.from("games").upsert({
+      invite_code: code,
+      host_name:   myName,
+      guest_name:  null,
+      status:      "waiting",
+      board:       JSON.stringify(Array(9).fill(null)),
+      turn:        "x",
+    }).then(({ error }) => {
+      if (error) {
+        statusEl.textContent = "DB error — check Supabase games table.";
+        statusEl.style.color = "var(--eliminate)";
+        console.error("Lobby upsert:", error);
+        return;
+      }
+      statusEl.textContent = code;
+      state.gameCode = code;
+
+      // Poll every 2 s — detect when guest updates status to "active"
+      pollId = setInterval(async () => {
+        const { data } = await db
+          .from("games").select("status,guest_name").eq("invite_code", code).single();
+        if (data?.status === "active" && data.guest_name) {
+          clearInterval(pollId);
+          state.opponent   = { nm: data.guest_name, init: data.guest_name[0]?.toUpperCase() || "?", status: "online", meta: "Via QR invite", stats: "" };
+          state.playerRole = "host";
+          statusEl.textContent = `${data.guest_name} joined — starting!`;
+          setTimeout(() => { state.score = { x: 0, o: 0 }; go("board_mp"); }, 700);
+        }
+      }, 2000);
+    });
 
     const wrap = h("div", { class: "screen-scroll pitch-bg-app matchmaking" });
     wrap.appendChild(TopBar({
       title: "Waiting for Friend",
       leading: IconBtn({ name: "close", onClick: cancelFn }),
     }));
-
     const body = h("div", { class: "body" });
     const scanner = h("div", { class: "scanner" });
     const rings = svg({ viewBox: "0 0 180 180" });
@@ -641,42 +665,40 @@
     body.appendChild(statusEl);
     body.appendChild(h("div", { class: "desc" }, "Share your QR — the match starts the moment they accept."));
     wrap.appendChild(body);
-
     wrap.appendChild(h("div", { class: "footer" },
       PitchButton({ label: "Cancel", variant: "ghost", full: true, onClick: cancelFn }),
     ));
-
     return wrap;
   };
 
-  // ── BOARD (Multiplayer 1v1 via Supabase Realtime) ──
+  // ── BOARD MP (1v1 — moves written to DB, polled by both sides) ──
   SCREENS.board_mp = () => {
-    const channel  = state.matchChannel;
-    const isHost   = state.playerRole === "host";
-    const userMark = isHost ? "x" : "o";
-    const oppMark  = isHost ? "o" : "x";
-    const opp      = state.opponent || { nm: "Opponent" };
+    const gameCode  = state.gameCode;
+    const isHost    = state.playerRole === "host";
+    const userMark  = isHost ? "x" : "o";
+    const oppMark   = isHost ? "o" : "x";
+    const opp       = state.opponent || { nm: "Opponent" };
 
-    let board  = Array(9).fill(null);
-    let turn   = "x";   // X (host) always moves first
-    let result = null;
-    let elapsedSec = 0;
-    const score = state.score;
+    let board        = Array(9).fill(null);
+    let turn         = "x";
+    let result       = null;
+    let elapsedSec   = 0;
+    let isUpdating   = false;
+    let lastBoardStr = JSON.stringify(board);
+    let pollId       = null;
+    const score      = state.score;
 
     const wrap = h("div", { class: "screen-scroll pitch-bg-app board-screen" });
     wrap.appendChild(TopBar({
-      title: "Live Match",
-      subtitle: "Online · 1v1",
-      leading: IconBtn({ name: "close", onClick: () => { state.score = { x: 0, o: 0 }; go("home"); } }),
+      title: "Live Match", subtitle: "Online · 1v1",
+      leading:  IconBtn({ name: "close",  onClick: () => { clearInterval(pollId); state.score = { x: 0, o: 0 }; go("home"); } }),
       trailing: IconBtn({ name: "more" }),
     }));
 
-    const strip  = h("div", { class: "player-strip" });
-    let youCard  = PlayerCard({ team: userMark, name: "You",  score: score[userMark], active: turn === userMark });
-    const midEl  = h("div", { style: { display: "flex", alignItems: "center", justifyContent: "center" } },
-      Logo({ size: 46 }),
-    );
-    let oppCard  = PlayerCard({ team: oppMark,  name: opp.nm, score: score[oppMark],  active: turn === oppMark });
+    const strip = h("div", { class: "player-strip" });
+    let youCard = PlayerCard({ team: userMark, name: "You",  score: score[userMark], active: turn === userMark });
+    const midEl = h("div", { style: { display: "flex", alignItems: "center", justifyContent: "center" } }, Logo({ size: 46 }));
+    let oppCard = PlayerCard({ team: oppMark,  name: opp.nm, score: score[oppMark],  active: turn === oppMark });
     strip.append(youCard, midEl, oppCard);
     wrap.appendChild(strip);
 
@@ -714,7 +736,7 @@
         if (cell === "x") cls.push("has-x");
         if (cell === "o") cls.push("has-o");
         if (winning)      cls.push("win");
-        const disabled = !!(cell || result || turn !== userMark);
+        const disabled = !!(cell || result || turn !== userMark || isUpdating);
         if (disabled) cls.push("disabled");
         const btn = h("button", { class: cls.join(" "), type: "button", disabled, onclick: () => userPlace(i) });
         if (cell === "x") btn.appendChild(XMark({ size: 56, glow: true }));
@@ -724,7 +746,7 @@
     };
     const renderAll = () => { renderStrip(); renderBoard(); renderIndicator(); };
 
-    function place(i, mark) {
+    function applyMove(i, mark) {
       if (board[i] || result) return;
       board[i] = mark;
       result = checkWin(board);
@@ -733,17 +755,27 @@
         if (result.who === "o") score.o += 1;
       }
       turn = mark === "x" ? "o" : "x";
-      renderAll();
-      if (result) finishSoon();
     }
 
     function userPlace(i) {
-      if (turn !== userMark || result || board[i]) return;
-      place(i, userMark);
-      if (channel) channel.send({ type: "broadcast", event: "move", payload: { index: i, mark: userMark } });
+      if (turn !== userMark || result || board[i] || isUpdating) return;
+      isUpdating = true;
+      applyMove(i, userMark);
+      renderAll();
+      const snap = JSON.stringify(board);
+      db.from("games").update({
+        board:  snap,
+        turn:   turn,
+        status: result ? "finished" : "active",
+      }).eq("invite_code", gameCode).then(() => {
+        lastBoardStr = snap;
+        isUpdating   = false;
+        if (result) finishSoon();
+      });
     }
 
     function finishSoon() {
+      clearInterval(pollId);
       const t = setTimeout(() => {
         state.lastMatchLengthSec = elapsedSec;
         go("gameover", { result: { ...result, userMark } });
@@ -751,25 +783,27 @@
       onUnmount(() => clearTimeout(t));
     }
 
-    // Elapsed time (cosmetic — for the gameover stats screen)
     const tick = setInterval(() => { elapsedSec += 1; }, 1000);
-    onUnmount(() => clearInterval(tick));
+    onUnmount(() => { clearInterval(tick); clearInterval(pollId); state.playerRole = null; state.gameCode = null; });
 
-    // Receive opponent moves
-    if (channel) {
-      channel.on("broadcast", { event: "move" }, ({ payload }) => {
-        if (payload.mark !== userMark) place(payload.index, payload.mark);
-      });
-    }
-
-    // Tear down channel when leaving this screen
-    onUnmount(() => {
-      if (state.matchChannel) {
-        state.matchChannel.unsubscribe();
-        state.matchChannel = null;
-        state.playerRole   = null;
+    // Poll for opponent moves (skip when it's our turn or updating)
+    pollId = setInterval(async () => {
+      if (turn === userMark || result || isUpdating) return;
+      const { data } = await db
+        .from("games").select("board,turn,status").eq("invite_code", gameCode).single();
+      if (!data || data.board === lastBoardStr) return;
+      lastBoardStr = data.board;
+      const dbBoard = JSON.parse(data.board);
+      // Find and apply the cell that changed
+      for (let i = 0; i < 9; i++) {
+        if (board[i] === null && dbBoard[i] !== null) {
+          applyMove(i, dbBoard[i]);
+          break;
+        }
       }
-    });
+      renderAll();
+      if (result) finishSoon();
+    }, 1500);
 
     renderAll();
     return wrap;
