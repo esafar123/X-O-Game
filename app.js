@@ -84,6 +84,10 @@
               ["path", { d: "M9.5 14.5L21 3h-3L6.5 14.5" }]],
     volume:  [["polygon", { points: "3 9 7 9 12 4 12 20 7 15 3 15" }],
               ["path", { d: "M16 8a5 5 0 010 8" }]],
+    male:    [["circle", { cx: 10, cy: 13, r: 6 }],
+              ["path",   { d: "M14.2 8.8L21 2M17 2H21V6" }]],
+    female:  [["circle", { cx: 12, cy: 9,  r: 6 }],
+              ["path",   { d: "M12 15v7M9 19h6" }]],
   };
 
   function Icon({ name, size = 20, color = "currentColor", strokeWidth = 2 }) {
@@ -441,13 +445,17 @@
     wrap.appendChild(h("div", { class: "onb-field" },
       h("div", { class: "section-label" }, "You play as"),
       h("div", { class: "onb-gender-row" },
-        ...["Male", "Female", "Other"].map(g =>
-          h("button", {
-            class: `onb-gender-btn ${state.onboarding.gender === g.toLowerCase() ? "sel" : ""}`,
+        ...["Male", "Female"].map(g => {
+          const sel = state.onboarding.gender === g.toLowerCase();
+          const btn = h("button", {
+            class: `onb-gender-btn ${sel ? "sel" : ""}`,
             type: "button",
             onclick: () => { state.onboarding.gender = g.toLowerCase(); render(); },
-          }, g),
-        ),
+          });
+          btn.appendChild(Icon({ name: g.toLowerCase(), size: 30, color: "currentColor" }));
+          btn.appendChild(h("span", { class: "onb-gender-label" }, g));
+          return btn;
+        }),
       ),
     ));
 
@@ -472,6 +480,26 @@
           });
         },
       }),
+    ));
+
+    wrap.appendChild(h("div", { class: "onb-guest-wrap" },
+      h("span", { class: "onb-guest-or" }, "or"),
+      h("button", {
+        class: "onb-guest-btn", type: "button",
+        onclick: () => {
+          const GUEST_POOL = [
+            "Shadow_GK", "Night_Striker", "Ghost_Winger", "Phantom_CF",
+            "Dark_Keeper", "Storm_Back",   "Ice_Fwd",      "Fire_Mid",
+            "Blaze_Sub",  "Dusk_Libero",
+          ];
+          const nickname    = GUEST_POOL[Math.floor(Math.random() * GUEST_POOL.length)];
+          const friend_code = generateFriendCode(nickname);
+          const profile     = { nickname, gender: "guest", friend_code, is_guest: true };
+          localStorage.setItem("xo_profile", JSON.stringify(profile));
+          state.profile = profile;
+          go("home");
+        },
+      }, "Continue as Guest"),
     ));
 
     return wrap;

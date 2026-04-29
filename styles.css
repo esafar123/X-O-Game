@@ -927,20 +927,44 @@ button { font: inherit; color: inherit; }
   display: flex; gap: 8px; margin-top: 8px;
 }
 .onb-gender-btn {
-  flex: 1; padding: 12px 0;
+  flex: 1; padding: 18px 0;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center; gap: 8px;
   background: var(--surface); border: 1px solid var(--border);
   border-radius: var(--r-md); color: var(--fg-2);
-  font-family: var(--font-headline); font-size: 13px;
-  font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase;
   cursor: pointer; transition: all 180ms;
 }
+.onb-gender-btn:active { transform: scale(0.97); }
 .onb-gender-btn.sel {
   background: var(--flood-500); border-color: var(--flood-500);
   color: var(--pitch-900);
 }
-.onb-actions {
-  padding: 24px 20px;
+.onb-gender-label {
+  font-family: var(--font-headline); font-size: 11px;
+  font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase;
 }
+.onb-actions {
+  padding: 24px 20px 12px;
+}
+.onb-guest-wrap {
+  padding: 0 20px 24px;
+  display: flex; flex-direction: column; align-items: center; gap: 10px;
+}
+.onb-guest-or {
+  font-family: var(--font-mono); font-size: 11px;
+  color: var(--fg-4); text-transform: uppercase; letter-spacing: 0.12em;
+}
+.onb-guest-btn {
+  background: none; border: none; cursor: pointer;
+  font-family: var(--font-body); font-size: 14px;
+  color: var(--fg-3); padding: 6px 14px;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  text-decoration-color: rgba(255,255,255,0.15);
+  transition: color 180ms;
+  border-radius: var(--r-sm);
+}
+.onb-guest-btn:active { color: var(--fg-1); }
 
 /* ── Code Reveal ── */
 .code-card {
