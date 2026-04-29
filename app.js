@@ -312,6 +312,7 @@
     gameCode:        null,   // invite_code for the current DB-backed game
     triviaQuestion:  null,   // { question, correct, options, category } shared for trivia_mp
     mpMark:          null,   // "x" | "o" — set after trivia_mp atomic claim
+    lastPlayerRole:  null,   // preserved through gameover so rematch can route correctly
   };
 
   // ────────────────────────────────────────────────────────────────
@@ -463,8 +464,8 @@
           return;
         }
         if (game.status !== "waiting") {
-          statusMsg.textContent = "This game already started or was cancelled.";
-          statusMsg.style.color = "var(--eliminate)";
+          statusMsg.textContent = "Host hasn't opened a new lobby yet — tap again in a moment.";
+          statusMsg.style.color = "var(--flood-500)";
           return;
         }
 
@@ -826,7 +827,14 @@
     }
 
     const tick = setInterval(() => { elapsedSec += 1; }, 1000);
-    onUnmount(() => { clearInterval(tick); clearInterval(pollId); state.playerRole = null; state.gameCode = null; state.mpMark = null; });
+    onUnmount(() => {
+      clearInterval(tick);
+      clearInterval(pollId);
+      state.lastPlayerRole = state.playerRole;   // preserve for gameover rematch routing
+      state.playerRole     = null;
+      state.gameCode       = null;
+      state.mpMark         = null;
+    });
 
     // Poll for opponent moves (skip when it's our turn or updating)
     pollId = setInterval(async () => {
@@ -1493,9 +1501,18 @@
     ));
     wrap.appendChild(body);
 
+    const lastRole = state.lastPlayerRole;  // "host" | "guest" | null
+    const rematchLabel  = lastRole === "host" ? "Host again"  : lastRole === "guest" ? "Rematch (rejoin)" : "Run it back";
+    const rematchAction = () => {
+      state.score = { x: 0, o: 0 };
+      state.lastPlayerRole = null;
+      if (lastRole === "host")  go("lobby");
+      else if (lastRole === "guest") go("join");
+      else go("matchmaking");
+    };
     wrap.appendChild(h("div", { class: "footer" },
-      PitchButton({ label: "Run it back", variant: "primary", full: true, icon: "rematch", onClick: () => { state.score = { x: 0, o: 0 }; go("matchmaking"); } }),
-      PitchButton({ label: "Back to home", variant: "ghost", full: true, onClick: () => { state.score = { x: 0, o: 0 }; go("home"); } }),
+      PitchButton({ label: rematchLabel, variant: "primary", full: true, icon: "rematch", onClick: rematchAction }),
+      PitchButton({ label: "Back to home", variant: "ghost",   full: true, onClick: () => { state.score = { x: 0, o: 0 }; state.lastPlayerRole = null; go("home"); } }),
     ));
     return wrap;
   };
