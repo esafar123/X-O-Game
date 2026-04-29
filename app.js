@@ -288,6 +288,8 @@
     lastMatchLengthSec: 0,
     settings: { soundOn: true, hapticsOn: true },
     leaderboardTab: "global",
+    matchChannel: null,   // Supabase Realtime channel for live 1v1
+    playerRole:   null,   // "host" | "guest"
   };
 
   // ────────────────────────────────────────────────────────────────
@@ -396,9 +398,10 @@
 
   // ── JOIN VIA QR ──
   SCREENS.join = () => {
-    const code = state.joinCode || "";
+    const code        = state.joinCode || "";
     const inviterName = code.replace(/^XO-/, "").replace(/-\d+$/, "");
-    const wrap = h("div", { class: "screen-scroll pitch-bg-app splash" });
+    const wrap        = h("div", { class: "screen-scroll pitch-bg-app splash" });
+
     const hero = h("div", { class: "hero" });
     hero.appendChild(Logo({ size: 80 }));
     hero.appendChild(h("div", { class: "wordmark" },
@@ -408,14 +411,57 @@
     ));
     hero.appendChild(h("div", { class: "tagline" }, `Code: ${code}`));
     wrap.appendChild(hero);
-    const actions = h("div", { class: "actions" });
+
+    const statusMsg = h("div", { class: "join-status" });
+    const actions   = h("div", { class: "actions" });
+
     actions.appendChild(PitchButton({
       label: "Accept & Play", variant: "primary", full: true, iconRight: "forward",
       onClick: () => {
-        state.opponent = { nm: inviterName, init: inviterName[0]?.toUpperCase() || "?", status: "online", meta: "Via invite", stats: "" };
-        go(state.profile ? "matchmaking" : "onboarding");
+        // Auto-create a guest profile if the scanner hasn't registered yet
+        if (!state.profile) {
+          const POOL = ["Shadow_GK","Night_Striker","Ghost_Winger","Phantom_CF","Dark_Keeper"];
+          const nickname    = POOL[Math.floor(Math.random() * POOL.length)];
+          const friend_code = generateFriendCode(nickname);
+          const profile     = { nickname, gender: "guest", friend_code, is_guest: true };
+          localStorage.setItem("xo_profile", JSON.stringify(profile));
+          state.profile = profile;
+        }
+        const myName = state.profile.nickname;
+        state.opponent   = { nm: inviterName, init: inviterName[0]?.toUpperCase() || "?", status: "online", meta: "Via QR invite", stats: "" };
+        state.playerRole = "guest";
+
+        statusMsg.textContent = "Connecting…";
+        statusMsg.style.color = "var(--flood-500)";
+
+        let timedOut = false;
+        const timeout = setTimeout(() => {
+          timedOut = true;
+          statusMsg.textContent = "No response — is the host still on the waiting screen?";
+          statusMsg.style.color = "var(--eliminate)";
+        }, 12000);
+
+        // Subscribe to the shared channel and announce arrival
+        const ch = db.channel(`match:${code}`)
+          .on("broadcast", { event: "host_ack" }, () => {
+            if (timedOut) return;
+            clearTimeout(timeout);
+            state.matchChannel = ch;
+            state.score = { x: 0, o: 0 };
+            go("board_mp");
+          })
+          .subscribe(async (status) => {
+            if (status === "SUBSCRIBED") {
+              await ch.send({
+                type: "broadcast", event: "guest_joined",
+                payload: { nickname: myName },
+              });
+            }
+          });
       },
     }));
+
+    actions.appendChild(statusMsg);
     actions.appendChild(PitchButton({ label: "Continue as guest", variant: "ghost", full: true, onClick: () => go("home") }));
     wrap.appendChild(actions);
     return wrap;
@@ -543,17 +589,41 @@
     return wrap;
   };
 
-  // ── LOBBY (QR creator waits for friend) ──
+  // ── LOBBY (QR creator waits for friend to scan) ──
   SCREENS.lobby = () => {
-    const code = state.profile?.friend_code || "";
+    const code   = state.profile?.friend_code || "";
+    const myName = state.profile?.nickname    || "You";
+
+    // Status element declared first so the async handler can update it
+    const statusEl = h("div", { class: "tick" }, code);
+
+    const cancelFn = () => {
+      ch.unsubscribe();
+      state.matchChannel = null;
+      go("home");
+    };
+
+    // Open the Supabase Realtime channel immediately
+    const ch = db.channel(`match:${code}`)
+      .on("broadcast", { event: "guest_joined" }, ({ payload }) => {
+        const guestName = payload.nickname || "Guest";
+        state.opponent   = { nm: guestName, init: guestName[0]?.toUpperCase() || "?", status: "online", meta: "Via QR invite", stats: "" };
+        state.playerRole = "host";
+        state.matchChannel = ch;
+        statusEl.textContent = `${guestName} accepted — starting…`;
+        // Acknowledge so the guest navigates too
+        ch.send({ type: "broadcast", event: "host_ack", payload: { hostNickname: myName } });
+        setTimeout(() => { state.score = { x: 0, o: 0 }; go("board_mp"); }, 900);
+      });
+    ch.subscribe();
+
     const wrap = h("div", { class: "screen-scroll pitch-bg-app matchmaking" });
     wrap.appendChild(TopBar({
       title: "Waiting for Friend",
-      leading: IconBtn({ name: "close", onClick: () => go("home") }),
+      leading: IconBtn({ name: "close", onClick: cancelFn }),
     }));
 
     const body = h("div", { class: "body" });
-
     const scanner = h("div", { class: "scanner" });
     const rings = svg({ viewBox: "0 0 180 180" });
     rings.classList.add("rings");
@@ -567,26 +637,141 @@
     scanner.appendChild(rings);
     scanner.appendChild(Logo({ size: 70 }));
     body.appendChild(scanner);
-
     body.appendChild(h("div", { class: "head" }, "WAITING FOR FRIEND"));
-    body.appendChild(h("div", { class: "tick" }, code));
-    body.appendChild(h("div", { class: "desc" },
-      "Your friend scans the QR and taps Accept.\nOnce they’re in, hit Start Match below.",
-    ));
+    body.appendChild(statusEl);
+    body.appendChild(h("div", { class: "desc" }, "Share your QR — the match starts the moment they accept."));
     wrap.appendChild(body);
 
-    const footer = h("div", {
-      class: "footer",
-      style: { display: "flex", flexDirection: "column", gap: "10px" },
-    },
-      PitchButton({
-        label: "Start Match", variant: "primary", full: true, iconRight: "forward",
-        onClick: () => go("matchmaking"),
-      }),
-      PitchButton({ label: "Cancel", variant: "ghost", full: true, onClick: () => go("home") }),
-    );
-    wrap.appendChild(footer);
+    wrap.appendChild(h("div", { class: "footer" },
+      PitchButton({ label: "Cancel", variant: "ghost", full: true, onClick: cancelFn }),
+    ));
 
+    return wrap;
+  };
+
+  // ── BOARD (Multiplayer 1v1 via Supabase Realtime) ──
+  SCREENS.board_mp = () => {
+    const channel  = state.matchChannel;
+    const isHost   = state.playerRole === "host";
+    const userMark = isHost ? "x" : "o";
+    const oppMark  = isHost ? "o" : "x";
+    const opp      = state.opponent || { nm: "Opponent" };
+
+    let board  = Array(9).fill(null);
+    let turn   = "x";   // X (host) always moves first
+    let result = null;
+    let elapsedSec = 0;
+    const score = state.score;
+
+    const wrap = h("div", { class: "screen-scroll pitch-bg-app board-screen" });
+    wrap.appendChild(TopBar({
+      title: "Live Match",
+      subtitle: "Online · 1v1",
+      leading: IconBtn({ name: "close", onClick: () => { state.score = { x: 0, o: 0 }; go("home"); } }),
+      trailing: IconBtn({ name: "more" }),
+    }));
+
+    const strip  = h("div", { class: "player-strip" });
+    let youCard  = PlayerCard({ team: userMark, name: "You",  score: score[userMark], active: turn === userMark });
+    const midEl  = h("div", { style: { display: "flex", alignItems: "center", justifyContent: "center" } },
+      Logo({ size: 46 }),
+    );
+    let oppCard  = PlayerCard({ team: oppMark,  name: opp.nm, score: score[oppMark],  active: turn === oppMark });
+    strip.append(youCard, midEl, oppCard);
+    wrap.appendChild(strip);
+
+    const boardWrap = h("div", { class: "board-wrap" });
+    const grid = h("div", { class: "board" });
+    boardWrap.appendChild(grid);
+    wrap.appendChild(boardWrap);
+
+    const indicator = h("div", { class: "turn-indicator" });
+    wrap.appendChild(indicator);
+
+    const renderStrip = () => {
+      const ny = PlayerCard({ team: userMark, name: "You",  score: score[userMark], active: turn === userMark && !result });
+      const no = PlayerCard({ team: oppMark,  name: opp.nm, score: score[oppMark],  active: turn === oppMark  && !result });
+      youCard.replaceWith(ny); youCard = ny;
+      oppCard.replaceWith(no); oppCard = no;
+    };
+    const renderIndicator = () => {
+      indicator.innerHTML = "";
+      if (result) {
+        const txt = result.who === "draw" ? "STALEMATE." : result.who === userMark ? "YOU WIN." : "FULL TIME.";
+        indicator.appendChild(h("div", { class: "head result" }, txt));
+      } else {
+        indicator.appendChild(h("div", { class: `head ${turn}` },
+          turn === userMark ? "YOUR MARK" : `${opp.nm.toUpperCase()} IS PLAYING`));
+        indicator.appendChild(h("div", { class: "sub" },
+          turn === userMark ? "Make it count." : "Waiting for opponent…"));
+      }
+    };
+    const renderBoard = () => {
+      grid.innerHTML = "";
+      board.forEach((cell, i) => {
+        const winning  = result?.line?.includes(i);
+        const cls      = ["cell"];
+        if (cell === "x") cls.push("has-x");
+        if (cell === "o") cls.push("has-o");
+        if (winning)      cls.push("win");
+        const disabled = !!(cell || result || turn !== userMark);
+        if (disabled) cls.push("disabled");
+        const btn = h("button", { class: cls.join(" "), type: "button", disabled, onclick: () => userPlace(i) });
+        if (cell === "x") btn.appendChild(XMark({ size: 56, glow: true }));
+        if (cell === "o") btn.appendChild(OMark({ size: 56, glow: true }));
+        grid.appendChild(btn);
+      });
+    };
+    const renderAll = () => { renderStrip(); renderBoard(); renderIndicator(); };
+
+    function place(i, mark) {
+      if (board[i] || result) return;
+      board[i] = mark;
+      result = checkWin(board);
+      if (result) {
+        if (result.who === "x") score.x += 1;
+        if (result.who === "o") score.o += 1;
+      }
+      turn = mark === "x" ? "o" : "x";
+      renderAll();
+      if (result) finishSoon();
+    }
+
+    function userPlace(i) {
+      if (turn !== userMark || result || board[i]) return;
+      place(i, userMark);
+      if (channel) channel.send({ type: "broadcast", event: "move", payload: { index: i, mark: userMark } });
+    }
+
+    function finishSoon() {
+      const t = setTimeout(() => {
+        state.lastMatchLengthSec = elapsedSec;
+        go("gameover", { result: { ...result, userMark } });
+      }, 1100);
+      onUnmount(() => clearTimeout(t));
+    }
+
+    // Elapsed time (cosmetic — for the gameover stats screen)
+    const tick = setInterval(() => { elapsedSec += 1; }, 1000);
+    onUnmount(() => clearInterval(tick));
+
+    // Receive opponent moves
+    if (channel) {
+      channel.on("broadcast", { event: "move" }, ({ payload }) => {
+        if (payload.mark !== userMark) place(payload.index, payload.mark);
+      });
+    }
+
+    // Tear down channel when leaving this screen
+    onUnmount(() => {
+      if (state.matchChannel) {
+        state.matchChannel.unsubscribe();
+        state.matchChannel = null;
+        state.playerRole   = null;
+      }
+    });
+
+    renderAll();
     return wrap;
   };
 

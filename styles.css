@@ -987,3 +987,10 @@ button { font: inherit; color: inherit; }
   margin: 16px 20px 0; padding: 0;
   color: var(--fg-3); font-size: 13px; text-align: center; line-height: 1.5;
 }
+
+/* Join screen — live status message */
+.join-status {
+  text-align: center; min-height: 18px;
+  font-family: var(--font-mono); font-size: 11px;
+  color: var(--fg-3); text-transform: uppercase; letter-spacing: 0.12em;
+}
