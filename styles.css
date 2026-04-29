@@ -1043,6 +1043,22 @@ button { font: inherit; color: inherit; }
   min-height: 24px; text-align: center;
 }
 
+/* Multiplayer trivia countdown */
+.trivia-countdown {
+  font-family: var(--font-headline);
+  font-size: 96px;
+  line-height: 1;
+  text-align: center;
+  color: var(--flood-500);
+  text-shadow: 0 0 32px var(--flood-500);
+  animation: trivia-pulse 0.9s ease-in-out infinite alternate;
+  margin: 24px 0 8px;
+}
+@keyframes trivia-pulse {
+  from { opacity: 0.7; transform: scale(0.92); }
+  to   { opacity: 1;   transform: scale(1.06); }
+}
+
 /* Join screen — live status message */
 .join-status {
   text-align: center; min-height: 18px;
