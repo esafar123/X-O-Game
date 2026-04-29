@@ -20,7 +20,11 @@ SCREENS.add_friend = () => {
     onclick: () => {
       navigator.clipboard?.writeText(myCode).then(() => {
         copyBtn.textContent = "Copied!";
-        setTimeout(() => { copyBtn.innerHTML = ""; copyBtn.appendChild(Icon({ name: "plus", size: 14 })); copyBtn.appendChild(document.createTextNode(" Copy")); }, 1800);
+        setTimeout(() => {
+          copyBtn.innerHTML = "";
+          copyBtn.appendChild(Icon({ name: "plus", size: 14 }));
+          copyBtn.appendChild(document.createTextNode(" Copy"));
+        }, 1800);
       });
     },
   });
@@ -72,7 +76,6 @@ SCREENS.add_friend = () => {
     resultArea.innerHTML  = "";
     foundProfile          = null;
 
-    // Look up profile
     const { data: profile, error } = await db
       .from("profiles")
       .select("nickname, friend_code")
@@ -85,7 +88,6 @@ SCREENS.add_friend = () => {
       return;
     }
 
-    // Check if a request already exists (either direction)
     const { data: existing } = await db
       .from("friend_requests")
       .select("status")
@@ -102,8 +104,7 @@ SCREENS.add_friend = () => {
       return;
     }
 
-    // Show found player card
-    foundProfile        = profile;
+    foundProfile          = profile;
     statusMsg.textContent = "";
 
     const card = h("div", { class: "af-found-card" });
@@ -143,19 +144,120 @@ SCREENS.add_friend = () => {
       return;
     }
 
-    const sentTo           = foundProfile.nickname;
-    resultArea.innerHTML   = "";
-    input.value            = "";
-    foundProfile           = null;
-    statusMsg.textContent  = `✓ Request sent to ${sentTo}!`;
-    statusMsg.style.color  = "var(--win)";
+    const sentTo          = foundProfile.nickname;
+    resultArea.innerHTML  = "";
+    input.value           = "";
+    foundProfile          = null;
+    statusMsg.textContent = `✓ Request sent to ${sentTo}!`;
+    statusMsg.style.color = "var(--win)";
   }, 2000);
 
-  // Wire search on Enter key too
+  // ── QR camera scanner ────────────────────────────────────────────
+  const startScanner = () => {
+    const root    = document.querySelector("#root");
+    const canvas  = document.createElement("canvas");
+    const ctx     = canvas.getContext("2d");
+    let stream    = null;
+    let animId    = null;
+    let detected  = false;
+
+    const close = () => {
+      detected = true;
+      if (animId)  cancelAnimationFrame(animId);
+      if (stream)  stream.getTracks().forEach(t => t.stop());
+      overlay.remove();
+    };
+
+    const handleScan = (data) => {
+      if (detected) return;
+      detected = true;
+      close();
+
+      // Extract 6-digit code from a URL ?join= param, or use raw value
+      let code = null;
+      try {
+        const url = new URL(data);
+        code = url.searchParams.get("join") || null;
+      } catch {}
+      if (!code && /^\d{6}$/.test(data.trim())) code = data.trim();
+
+      if (code) {
+        input.value           = code;
+        statusMsg.textContent = "";
+        resultArea.innerHTML  = "";
+        doSearch();
+      } else {
+        statusMsg.textContent = "QR code not recognised — try typing the code.";
+        statusMsg.style.color = "var(--eliminate)";
+      }
+    };
+
+    const tick = () => {
+      if (detected) return;
+      if (video.readyState === video.HAVE_ENOUGH_DATA) {
+        canvas.width  = video.videoWidth;
+        canvas.height = video.videoHeight;
+        ctx.drawImage(video, 0, 0);
+        const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+
+        if (window.jsQR) {
+          const result = window.jsQR(imgData.data, imgData.width, imgData.height, {
+            inversionAttempts: "dontInvert",
+          });
+          if (result?.data) { handleScan(result.data); return; }
+        }
+      }
+      animId = requestAnimationFrame(tick);
+    };
+
+    const video   = h("video",  { class: "qr-video", autoplay: true, playsinline: true, muted: true });
+    const overlay = h("div",    { class: "qr-overlay" },
+      video,
+      h("div", { class: "qr-dimmer qr-dimmer-top" }),
+      h("div", { class: "qr-dimmer-mid" },
+        h("div", { class: "qr-dimmer qr-dimmer-side" }),
+        h("div", { class: "qr-frame" },
+          h("span", { class: "qr-corner qr-tl" }),
+          h("span", { class: "qr-corner qr-tr" }),
+          h("span", { class: "qr-corner qr-bl" }),
+          h("span", { class: "qr-corner qr-br" }),
+        ),
+        h("div", { class: "qr-dimmer qr-dimmer-side" }),
+      ),
+      h("div", { class: "qr-dimmer qr-dimmer-bot" },
+        h("div", { class: "qr-hint" }, "Point at a friend's QR code"),
+        h("button", { class: "qr-cancel", type: "button", onclick: close },
+          Icon({ name: "close", size: 20, color: "var(--fg-1)" }),
+        ),
+      ),
+    );
+
+    root.appendChild(overlay);
+
+    navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" }, audio: false })
+      .then(s => {
+        stream = s;
+        video.srcObject = s;
+        video.play();
+        video.addEventListener("loadeddata", () => { animId = requestAnimationFrame(tick); });
+      })
+      .catch(() => {
+        close();
+        statusMsg.textContent = "Camera access denied. Allow camera in your browser and try again.";
+        statusMsg.style.color = "var(--eliminate)";
+      });
+  };
+
+  // ── Layout ───────────────────────────────────────────────────────
   input.addEventListener("keydown", (e) => { if (e.key === "Enter") doSearch(); });
+
+  const scanBtn = h("button", { class: "af-scan-btn", type: "button", onclick: startScanner },
+    Icon({ name: "scan", size: 20, color: "var(--flood-500)" }),
+  );
 
   const searchRow = h("div", { class: "af-search-row" });
   searchRow.appendChild(input);
+  searchRow.appendChild(scanBtn);
   searchRow.appendChild(PitchButton({ label: "Search", variant: "primary", onClick: doSearch }));
 
   wrap.appendChild(h("div", { class: "af-section" },

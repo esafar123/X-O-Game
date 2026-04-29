@@ -26,6 +26,8 @@ export const ICON_PATHS = {
             ["circle", { cx: 19, cy: 12, r: 1.5 }]],
   home:    [["path", { d: "M3 11l9-8 9 8v10a2 2 0 01-2 2h-4v-7h-6v7H5a2 2 0 01-2-2z" }]],
   user:    [["circle", { cx: 12, cy: 8, r: 4 }], ["path", { d: "M4 20c0-4 3.6-7 8-7s8 3 8 7" }]],
+  scan:    [["path", { d: "M3 7V5a2 2 0 012-2h2M17 3h2a2 2 0 012 2v2M21 17v2a2 2 0 01-2 2h-2M7 21H5a2 2 0 01-2-2v-2" }],
+            ["rect", { x: 7, y: 7, width: 10, height: 10, rx: 1 }]],
   rematch: [["path", { d: "M21 12a9 9 0 11-3.5-7.1" }], ["polyline", { points: "21 3 21 9 15 9" }]],
   swords:  [["path", { d: "M14.5 17.5L3 6V3h3l11.5 11.5" }],
             ["path", { d: "M13 19l6-6" }],
