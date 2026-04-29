@@ -18,6 +18,26 @@
     return `XO-${slug}-${digits}`;
   }
 
+  // Decode HTML entities returned by opentdb (e.g. &amp; &#039;)
+  function decodeHTML(str) {
+    const el = document.createElement("textarea");
+    el.innerHTML = str;
+    return el.value;
+  }
+
+  // Fisher-Yates shuffle
+  function shuffle(arr) {
+    const a = [...arr];
+    for (let i = a.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [a[i], a[j]] = [a[j], a[i]];
+    }
+    return a;
+  }
+
+  // Difficulty per league
+  const TRIVIA_DIFF = { easy: "easy", smart: "medium", hard: "hard", ruthless: "hard" };
+
   // ────────────────────────────────────────────────────────────────
   // DOM helpers
   // ────────────────────────────────────────────────────────────────
@@ -809,6 +829,108 @@
     return wrap;
   };
 
+  // ── TRIVIA (pre-match question) ──
+  SCREENS.trivia = () => {
+    const league = state.league || LEAGUES[1];
+    const diff   = TRIVIA_DIFF[league.difficulty] || "medium";
+
+    const wrap = h("div", { class: "screen-scroll pitch-bg-app trivia-screen" });
+    wrap.appendChild(TopBar({
+      title: `Pre-match · ${league.name}`,
+      leading: IconBtn({ name: "close", onClick: () => go("home") }),
+    }));
+
+    const body = h("div", { class: "trivia-body" });
+    const loadEl = h("div", { class: "trivia-loading" }, "Loading question…");
+    body.appendChild(loadEl);
+    wrap.appendChild(body);
+
+    let answered = false;
+    let timer    = 10;
+    let timerId  = null;
+    const timerWrap = h("div");
+
+    const proceedToGame = (correct) => {
+      state.team = correct ? "x" : "o";   // correct → kick off (X); wrong → AI kicks off
+      state.opponent = null;
+      go("matchmaking");
+    };
+
+    const handleAnswer = (selected, correct, optEls) => {
+      if (answered) return;
+      answered = true;
+      clearInterval(timerId);
+      const isCorrect = selected === correct;
+      optEls.forEach(({ el, val }) => {
+        if (val === correct)              el.classList.add("correct");
+        else if (val === selected && !isCorrect) el.classList.add("wrong");
+        el.disabled = true;
+      });
+      const resultEl = body.querySelector(".trivia-result");
+      if (resultEl) {
+        resultEl.textContent = isCorrect ? "✓ Correct — you kick off!" : "✗ Wrong — AI kicks off!";
+        resultEl.style.color = isCorrect ? "var(--win)" : "var(--eliminate)";
+      }
+      setTimeout(() => proceedToGame(isCorrect), 1500);
+    };
+
+    const updateTimerEl = () => {
+      timerWrap.innerHTML = "";
+      timerWrap.appendChild(TimerRing({ value: timer, total: 10, size: 72, danger: timer <= 3 }));
+    };
+
+    fetch(`https://opentdb.com/api.php?amount=1&difficulty=${diff}&type=multiple`)
+      .then(r => r.json())
+      .then(data => {
+        if (data.response_code !== 0 || !data.results?.length) throw new Error();
+        const q       = data.results[0];
+        const question = decodeHTML(q.question);
+        const correct  = decodeHTML(q.correct_answer);
+        const options  = shuffle([correct, ...q.incorrect_answers.map(decodeHTML)]);
+
+        body.innerHTML = "";
+
+        // Timer ring
+        updateTimerEl();
+        body.appendChild(timerWrap);
+
+        // Category badge
+        body.appendChild(h("div", { class: "trivia-category" }, decodeHTML(q.category)));
+
+        // Question text
+        body.appendChild(h("div", { class: "trivia-question" }, question));
+
+        body.appendChild(h("div", { class: "trivia-hint" }, "Answer correctly to kick off first"));
+
+        // Answer grid
+        const grid  = h("div", { class: "trivia-options" });
+        const optEls = options.map(val => {
+          const el = h("button", {
+            class: "trivia-opt", type: "button",
+            onclick: () => handleAnswer(val, correct, optEls),
+          }, val);
+          grid.appendChild(el);
+          return { el, val };
+        });
+        body.appendChild(grid);
+        body.appendChild(h("div", { class: "trivia-result" }));
+
+        // Countdown
+        timerId = setInterval(() => {
+          timer--;
+          updateTimerEl();
+          if (timer <= 0) {
+            clearInterval(timerId);
+            if (!answered) handleAnswer(null, correct, optEls);
+          }
+        }, 1000);
+      })
+      .catch(() => proceedToGame(true)); // API fail → just start, user kicks off
+
+    onUnmount(() => clearInterval(timerId));
+    return wrap;
+  };
+
   // ── HOME ──
   SCREENS.home = () => {
     const wrap = h("div", { class: "screen-scroll pitch-bg-app" });
@@ -827,7 +949,7 @@
       h("div", { class: "bolt-orb" }, Icon({ name: "bolt", size: 40, color: "var(--flood-500)" })),
     ));
     const list = h("div", { class: "action-list" });
-    list.appendChild(ActionTile({ title: "Quick match", desc: "Find an opponent · 15s clock", icon: "bolt", accent: true, onClick: () => { state.opponent = null; go("matchmaking"); }}));
+    list.appendChild(ActionTile({ title: "Quick match", desc: "Answer a question · kick off first", icon: "bolt", accent: true, onClick: () => { state.opponent = null; state.league = LEAGUES[1]; go("trivia"); }}));
     list.appendChild(ActionTile({ title: "Play a friend", desc: "3 friends online", icon: "swords", onClick: () => go("friends") }));
     list.appendChild(ActionTile({ title: "Leagues", desc: "2 of 4 unlocked", icon: "trophy", onClick: () => go("levels") }));
     list.appendChild(ActionTile({ title: "Leaderboard", desc: "You're ranked #214", icon: "star", onClick: () => go("leaderboard") }));
@@ -977,7 +1099,7 @@
         ),
         h("button", {
           class: "play-pill", type: "button",
-          onclick: () => go("matchmaking", { league: L }),
+          onclick: () => { state.league = L; go("trivia"); },
         },
           Icon({ name: "play", size: 11, color: "var(--pitch-900)" }),
           document.createTextNode(" Play"),

@@ -988,6 +988,61 @@ button { font: inherit; color: inherit; }
   color: var(--fg-3); font-size: 13px; text-align: center; line-height: 1.5;
 }
 
+/* ──────────────── TRIVIA ──────────────── */
+.trivia-screen {
+  height: 100%; display: flex; flex-direction: column;
+}
+.trivia-body {
+  flex: 1; display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  gap: 18px; padding: 0 24px 32px;
+}
+.trivia-loading {
+  font-family: var(--font-mono); font-size: 13px;
+  color: var(--fg-3); text-transform: uppercase; letter-spacing: 0.12em;
+}
+.trivia-category {
+  font-family: var(--font-mono); font-size: 10px;
+  color: var(--flood-500); text-transform: uppercase;
+  letter-spacing: 0.16em; text-align: center;
+}
+.trivia-question {
+  font-family: var(--font-headline); font-weight: 800;
+  font-size: 21px; line-height: 1.3; letter-spacing: 0.02em;
+  text-align: center; color: var(--fg-1);
+}
+.trivia-hint {
+  font-family: var(--font-mono); font-size: 10px;
+  color: var(--fg-3); text-transform: uppercase; letter-spacing: 0.12em;
+  text-align: center;
+}
+.trivia-options {
+  width: 100%;
+  display: grid; grid-template-columns: 1fr 1fr; gap: 10px;
+}
+.trivia-opt {
+  padding: 16px 10px;
+  background: var(--surface); border: 1.5px solid var(--border);
+  border-radius: var(--r-md); color: var(--fg-1);
+  font-family: var(--font-headline); font-weight: 700;
+  font-size: 13px; letter-spacing: 0.03em;
+  text-align: center; line-height: 1.3;
+  cursor: pointer; transition: all 160ms;
+}
+.trivia-opt:active:not(:disabled) { transform: scale(0.97); }
+.trivia-opt:disabled { cursor: default; }
+.trivia-opt.correct {
+  background: rgba(74,222,128,0.18); border-color: var(--win); color: var(--win);
+}
+.trivia-opt.wrong {
+  background: rgba(255,46,77,0.15); border-color: var(--eliminate); color: var(--eliminate);
+}
+.trivia-result {
+  font-family: var(--font-headline); font-weight: 800;
+  font-size: 16px; letter-spacing: 0.06em; text-transform: uppercase;
+  min-height: 24px; text-align: center;
+}
+
 /* Join screen — live status message */
 .join-status {
   text-align: center; min-height: 18px;
