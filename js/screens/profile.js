@@ -31,6 +31,28 @@ SCREENS.profile = () => {
     h("div", { class: "prof-handle" }, `#${code}`),
   ));
 
+  // ── QR code ──────────────────────────────────────────────────────
+  if (code !== "—") {
+    const gameUrl = `https://x-o-game-five-jade.vercel.app/?join=${encodeURIComponent(code)}`;
+    const qrUrl   = `https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(gameUrl)}&bgcolor=050a08&color=d4ff00`;
+
+    const copyBtn = h("button", { class: "pbtn ghost code-copy-btn", type: "button",
+      onclick: () => {
+        navigator.clipboard?.writeText(code).then(() => {
+          copyBtn.textContent = "Copied!";
+          setTimeout(() => { copyBtn.textContent = "Copy Code"; }, 2000);
+        });
+      },
+    }, "Copy Code");
+
+    wrap.appendChild(h("div", { class: "code-card" },
+      h("img", { class: "code-qr", src: qrUrl, alt: "QR for " + code, width: 180, height: 180 }),
+      h("div", { class: "code-value" }, code),
+      copyBtn,
+    ));
+    wrap.appendChild(h("p", { class: "code-tip" }, "Ask a friend to scan — drops them straight into a match with you."));
+  }
+
   // ── Stats row ────────────────────────────────────────────────────
   wrap.appendChild(h("div", { class: "prof-stats" },
     statCell("—", "Wins"),
