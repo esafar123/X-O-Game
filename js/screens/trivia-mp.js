@@ -16,7 +16,7 @@ SCREENS.trivia_mp = () => {
   wrap.appendChild(body);
 
   let answered  = false;
-  let timer     = 10;
+  let timer     = 15;
   let timerId   = null;
   let pollId    = null;
   let fallbackT = null;
@@ -66,22 +66,14 @@ SCREENS.trivia_mp = () => {
     }, 800);
   };
 
-  // Try to atomically claim X for correct answer
+  // Try to atomically claim X for correct answer, then poll to confirm who won
   const claimX = async () => {
-    const { data, error } = await db.from("games")
+    await db.from("games")
       .update({ x_winner: myName })
       .is("x_winner", null)
-      .eq("invite_code", gameCode)
-      .select("x_winner");
-    const claimed  = !error && data?.length > 0 && data[0].x_winner === myName;
-    const resultEl = body.querySelector(".trivia-result");
-    if (claimed) {
-      if (resultEl) { resultEl.textContent = "⚽ You claimed kick-off!"; resultEl.style.color = "var(--win)"; }
-      proceedToMatch("x");
-    } else {
-      if (resultEl) { resultEl.textContent = "Race lost — waiting…"; resultEl.style.color = "var(--fg-3)"; }
-      waitForWinner();
-    }
+      .eq("invite_code", gameCode);
+    // Don't rely on RETURNING — just poll to see who the DB gave X to
+    waitForWinner();
   };
 
   // Handle answer selection (or null for timeout)
@@ -105,7 +97,7 @@ SCREENS.trivia_mp = () => {
 
   const updateTimerEl = () => {
     timerWrap.innerHTML = "";
-    timerWrap.appendChild(TimerRing({ value: timer, total: 10, size: 72, danger: timer <= 3 }));
+    timerWrap.appendChild(TimerRing({ value: timer, total: 15, size: 72, danger: timer <= 3 }));
   };
 
   // Build the question UI (called after 3-2-1 countdown)

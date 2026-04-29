@@ -121,7 +121,6 @@ SCREENS.board_mp = () => {
   /** Apply an incoming board snapshot from DB (Realtime or polling) */
   const handleRemoteUpdate = (data) => {
     if (!data || data.board === lastBoardStr || isUpdating) return;
-    if (turn === userMark) return; // it's our turn — ignore remote changes
     lastBoardStr = data.board;
     try {
       const dbBoard = JSON.parse(data.board);
@@ -136,19 +135,20 @@ SCREENS.board_mp = () => {
     } catch {}
   };
 
-  /** Polling fallback */
+  /** Safety polling — always runs alongside Realtime to catch missed events */
   const startPolling = () => {
+    if (pollId) return;
     pollId = setInterval(async () => {
-      if (turn === userMark || result || isUpdating) return;
+      if (result || isUpdating) return;
       try {
         const { data } = await db
           .from("games").select("board,turn,status").eq("invite_code", gameCode).single();
         handleRemoteUpdate(data);
       } catch {}
-    }, 1500);
+    }, 2000);
   };
 
-  /** Supabase Realtime — falls back to polling on error */
+  /** Supabase Realtime for fast delivery; polling is always the safety net */
   const startRealtime = () => {
     channel = db.channel(`board:${gameCode}`)
       .on("postgres_changes", {
@@ -157,13 +157,29 @@ SCREENS.board_mp = () => {
         table:  "games",
         filter: `invite_code=eq.${gameCode}`,
       }, (payload) => handleRemoteUpdate(payload.new))
-      .subscribe((status) => {
-        if (status === "CHANNEL_ERROR" || status === "TIMED_OUT") {
-          channel?.unsubscribe();
-          channel = null;
-          startPolling();
-        }
-      });
+      .subscribe();
+  };
+
+  /** Load current board from DB on arrival — catches moves made while navigating */
+  const syncInitialBoard = async () => {
+    const { data } = await db
+      .from("games").select("board,status").eq("invite_code", gameCode).single();
+    if (!data?.board || data.board === lastBoardStr || data.status === "finished") return;
+    const dbBoard = JSON.parse(data.board);
+    let changed = false;
+    for (let i = 0; i < 9; i++) {
+      if (board[i] === null && dbBoard[i] !== null) {
+        board[i] = dbBoard[i];
+        changed = true;
+      }
+    }
+    if (!changed) return;
+    lastBoardStr = data.board;
+    const moveCount = board.filter(Boolean).length;
+    turn   = moveCount % 2 === 0 ? "x" : "o";
+    result = checkWin(board);
+    renderAll();
+    if (result) finishSoon();
   };
 
   const cleanup = () => { clearInterval(pollId); channel?.unsubscribe(); };
@@ -179,6 +195,8 @@ SCREENS.board_mp = () => {
   });
 
   startRealtime();
+  startPolling();
+  syncInitialBoard();
   renderAll();
   return wrap;
 };

@@ -21,7 +21,7 @@ SCREENS.trivia = () => {
   wrap.appendChild(body);
 
   let answered = false;
-  let timer    = 10;
+  let timer    = 15;
   let timerId  = null;
   const timerWrap = h("div");
 
@@ -51,7 +51,7 @@ SCREENS.trivia = () => {
 
   const updateTimerEl = () => {
     timerWrap.innerHTML = "";
-    timerWrap.appendChild(TimerRing({ value: timer, total: 10, size: 72, danger: timer <= 3 }));
+    timerWrap.appendChild(TimerRing({ value: timer, total: 15, size: 72, danger: timer <= 3 }));
   };
 
   fetch(`https://opentdb.com/api.php?amount=1&difficulty=${diff}&type=multiple`)
