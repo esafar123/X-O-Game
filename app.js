@@ -267,9 +267,12 @@
 
   const storedProfile = JSON.parse(localStorage.getItem("xo_profile") || "null");
 
+  const joinCode = new URLSearchParams(window.location.search).get("join") || null;
+
   const state = {
     screen: "splash",
     profile: storedProfile,
+    joinCode,
     onboarding: { nickname: "", gender: "" },
     opponent: null,
     league: LEAGUES[1],          // default to Pro Pitch
@@ -387,6 +390,33 @@
     return wrap;
   };
 
+  // ── JOIN VIA QR ──
+  SCREENS.join = () => {
+    const code = state.joinCode || "";
+    const inviterName = code.replace(/^XO-/, "").replace(/-\d+$/, "");
+    const wrap = h("div", { class: "screen-scroll pitch-bg-app splash" });
+    const hero = h("div", { class: "hero" });
+    hero.appendChild(Logo({ size: 80 }));
+    hero.appendChild(h("div", { class: "wordmark" },
+      h("span", { style: { fontSize: "18px", letterSpacing: "0.12em" } }, inviterName),
+      h("br"),
+      h("span", { class: "accent", style: { fontSize: "28px" } }, "INVITED YOU"),
+    ));
+    hero.appendChild(h("div", { class: "tagline" }, `Code: ${code}`));
+    wrap.appendChild(hero);
+    const actions = h("div", { class: "actions" });
+    actions.appendChild(PitchButton({
+      label: "Accept & Play", variant: "primary", full: true, iconRight: "forward",
+      onClick: () => {
+        state.opponent = { nm: inviterName, init: inviterName[0]?.toUpperCase() || "?", status: "online", meta: "Via invite", stats: "" };
+        go(state.profile ? "matchmaking" : "onboarding");
+      },
+    }));
+    actions.appendChild(PitchButton({ label: "Continue as guest", variant: "ghost", full: true, onClick: () => go("home") }));
+    wrap.appendChild(actions);
+    return wrap;
+  };
+
   // ── ONBOARDING ──
   SCREENS.onboarding = () => {
     const wrap = h("div", { class: "screen-scroll" });
@@ -452,8 +482,9 @@
     const wrap = h("div", { class: "screen-scroll pitch-bg-app" });
     wrap.appendChild(TopBar({ title: "Your Pitch Code" }));
 
-    const code   = state.profile?.friend_code || "";
-    const qrUrl  = `https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=${encodeURIComponent(code)}&bgcolor=050a08&color=d4ff00`;
+    const code    = state.profile?.friend_code || "";
+    const gameUrl = `https://x-o-game-five-jade.vercel.app/?join=${encodeURIComponent(code)}`;
+    const qrUrl   = `https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=${encodeURIComponent(gameUrl)}&bgcolor=050a08&color=d4ff00`;
 
     const card = h("div", { class: "code-card" });
     card.appendChild(h("img", { class: "code-qr", src: qrUrl, alt: "QR for " + code, width: 220, height: 220 }));
@@ -1020,6 +1051,7 @@
   // Boot
   // ────────────────────────────────────────────────────────────────
   document.addEventListener("DOMContentLoaded", () => {
+    if (state.joinCode) state.screen = "join";
     render();
   });
 })();
