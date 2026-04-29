@@ -11,7 +11,7 @@ SCREENS.friends = () => {
   wrap.appendChild(TopBar({
     title:    "Roster",
     leading:  IconBtn({ name: "back",  onClick: () => go("home")       }),
-    trailing: IconBtn({ name: "friends",  onClick: () => go("add_friend") }),
+    trailing: IconBtn({ name: "plus",  onClick: () => go("add_friend") }),
   }));
 
   // ── Guest / no-profile state ─────────────────────────────────────

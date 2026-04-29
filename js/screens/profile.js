@@ -30,6 +30,14 @@ SCREENS.profile = () => {
     heroNameEl,
     h("div", { class: "prof-handle" }, `#${code}`),
   ));
+  // ── Stats row ────────────────────────────────────────────────────
+  wrap.appendChild(h("div", { class: "prof-stats" },
+    statCell("—", "Wins"),
+    h("div", { class: "prof-stat-div" }),
+    statCell("—", "Matches"),
+    h("div", { class: "prof-stat-div" }),
+    statCell("—", "Friends"),
+  ));
 
   // ── QR code ──────────────────────────────────────────────────────
   if (code !== "—") {
@@ -53,17 +61,8 @@ SCREENS.profile = () => {
     wrap.appendChild(h("p", { class: "code-tip" }, "Ask a friend to scan — drops them straight into a match with you."));
   }
 
-  // ── Stats row ────────────────────────────────────────────────────
-  wrap.appendChild(h("div", { class: "prof-stats" },
-    statCell("—", "Wins"),
-    h("div", { class: "prof-stat-div" }),
-    statCell("—", "Matches"),
-    h("div", { class: "prof-stat-div" }),
-    statCell("—", "Friends"),
-  ));
-
   // ── Account group ────────────────────────────────────────────────
-  wrap.appendChild(h("div", { class: "section-label" }, "Account"));
+  wrap.appendChild(h("div", { class: "section-label" }, ""));
 
   const statusMsg = h("div", { class: "prof-edit-status" });
 
