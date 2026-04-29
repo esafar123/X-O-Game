@@ -534,8 +534,58 @@
     ));
 
     wrap.appendChild(h("div", { class: "onb-actions" },
-      PitchButton({ label: "Start Playing", variant: "primary", full: true, iconRight: "forward", onClick: () => go("home") }),
+      PitchButton({ label: "Wait for Friend to Scan", variant: "primary", full: true, icon: "clock", onClick: () => go("lobby") }),
     ));
+    wrap.appendChild(h("div", { style: { padding: "0 20px 24px" } },
+      PitchButton({ label: "Start Playing Solo", variant: "ghost", full: true, onClick: () => go("home") }),
+    ));
+
+    return wrap;
+  };
+
+  // ── LOBBY (QR creator waits for friend) ──
+  SCREENS.lobby = () => {
+    const code = state.profile?.friend_code || "";
+    const wrap = h("div", { class: "screen-scroll pitch-bg-app matchmaking" });
+    wrap.appendChild(TopBar({
+      title: "Waiting for Friend",
+      leading: IconBtn({ name: "close", onClick: () => go("home") }),
+    }));
+
+    const body = h("div", { class: "body" });
+
+    const scanner = h("div", { class: "scanner" });
+    const rings = svg({ viewBox: "0 0 180 180" });
+    rings.classList.add("rings");
+    [80, 60, 40].forEach((r, i) => {
+      rings.appendChild(svgEl("circle", {
+        cx: 90, cy: 90, r,
+        fill: "none", stroke: "var(--flood-500)", "stroke-width": 2,
+        "stroke-opacity": [0.25, 0.4, 0.6][i],
+      }));
+    });
+    scanner.appendChild(rings);
+    scanner.appendChild(Logo({ size: 70 }));
+    body.appendChild(scanner);
+
+    body.appendChild(h("div", { class: "head" }, "WAITING FOR FRIEND"));
+    body.appendChild(h("div", { class: "tick" }, code));
+    body.appendChild(h("div", { class: "desc" },
+      "Your friend scans the QR and taps Accept.\nOnce they’re in, hit Start Match below.",
+    ));
+    wrap.appendChild(body);
+
+    const footer = h("div", {
+      class: "footer",
+      style: { display: "flex", flexDirection: "column", gap: "10px" },
+    },
+      PitchButton({
+        label: "Start Match", variant: "primary", full: true, iconRight: "forward",
+        onClick: () => go("matchmaking"),
+      }),
+      PitchButton({ label: "Cancel", variant: "ghost", full: true, onClick: () => go("home") }),
+    );
+    wrap.appendChild(footer);
 
     return wrap;
   };
