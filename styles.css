@@ -904,3 +904,62 @@ button { font: inherit; color: inherit; }
 /* Reusable layout helpers */
 .row-gap-8 { display: flex; gap: 8px; padding: 0 20px 14px; }
 .list { padding: 0 20px; display: flex; flex-direction: column; gap: 8px; }
+
+/* ── Onboarding ── */
+.onb-avatar-wrap {
+  display: flex; justify-content: center; padding: 24px 20px 8px;
+}
+.onb-field {
+  padding: 12px 20px;
+}
+.onb-input {
+  width: 100%; margin-top: 8px;
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--r-md); padding: 14px 16px;
+  color: var(--fg-1); font-family: var(--font-headline);
+  font-size: 16px; font-weight: 700; letter-spacing: 0.04em;
+  outline: none; box-sizing: border-box;
+  transition: border-color 180ms;
+}
+.onb-input:focus { border-color: var(--flood-500); }
+.onb-input::placeholder { color: var(--fg-3); font-weight: 500; }
+.onb-gender-row {
+  display: flex; gap: 8px; margin-top: 8px;
+}
+.onb-gender-btn {
+  flex: 1; padding: 12px 0;
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--r-md); color: var(--fg-2);
+  font-family: var(--font-headline); font-size: 13px;
+  font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase;
+  cursor: pointer; transition: all 180ms;
+}
+.onb-gender-btn.sel {
+  background: var(--flood-500); border-color: var(--flood-500);
+  color: var(--pitch-900);
+}
+.onb-actions {
+  padding: 24px 20px;
+}
+
+/* ── Code Reveal ── */
+.code-card {
+  margin: 24px 20px 0;
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--r-xl); padding: 28px 20px 20px;
+  display: flex; flex-direction: column; align-items: center; gap: 16px;
+}
+.code-qr {
+  border-radius: var(--r-md); display: block;
+}
+.code-value {
+  font-family: var(--font-mono); font-size: 22px;
+  letter-spacing: 0.12em; color: var(--flood-500);
+}
+.code-copy-btn {
+  width: 100%; margin-top: 4px;
+}
+.code-tip {
+  margin: 16px 20px 0; padding: 0;
+  color: var(--fg-3); font-size: 13px; text-align: center; line-height: 1.5;
+}

@@ -5,6 +5,20 @@
   "use strict";
 
   // ────────────────────────────────────────────────────────────────
+  // Supabase
+  // ────────────────────────────────────────────────────────────────
+  const db = window.supabase.createClient(
+    "https://rhkycxduurrshgwfembn.supabase.co",
+    "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJoa3ljeGR1dXJyc2hnd2ZlbWJuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc0NjkyMDIsImV4cCI6MjA5MzA0NTIwMn0.Tu0TrserGiUrQA8gvWomIM99z0YnTFzTAw-TVYnF8wk"
+  );
+
+  function generateFriendCode(nickname) {
+    const slug = nickname.toUpperCase().replace(/[^A-Z]/g, "").slice(0, 4) || "PLAY";
+    const digits = String(Math.floor(1000 + Math.random() * 9000));
+    return `XO-${slug}-${digits}`;
+  }
+
+  // ────────────────────────────────────────────────────────────────
   // DOM helpers
   // ────────────────────────────────────────────────────────────────
   const h = (tag, attrs = {}, ...kids) => {
@@ -251,8 +265,12 @@
   };
   const LB_TOP = LB_DATA.global;
 
+  const storedProfile = JSON.parse(localStorage.getItem("xo_profile") || "null");
+
   const state = {
     screen: "splash",
+    profile: storedProfile,
+    onboarding: { nickname: "", gender: "" },
     opponent: null,
     league: LEAGUES[1],          // default to Pro Pitch
     sound: true,
@@ -362,10 +380,104 @@
     hero.appendChild(h("div", { class: "tagline" }, "The floodlit night-game"));
     wrap.appendChild(hero);
     const actions = h("div", { class: "actions" });
-    actions.appendChild(PitchButton({ label: "READY UP", variant: "primary", full: true, iconRight: "forward", onClick: () => go("home") }));
+    actions.appendChild(PitchButton({ label: "READY UP", variant: "primary", full: true, iconRight: "forward", onClick: () => go(state.profile ? "home" : "onboarding") }));
     actions.appendChild(PitchButton({ label: "Continue as guest", variant: "ghost", full: true, onClick: () => go("home") }));
     actions.appendChild(h("div", { class: "ver" }, "v 1.0 · Pre-season"));
     wrap.appendChild(actions);
+    return wrap;
+  };
+
+  // ── ONBOARDING ──
+  SCREENS.onboarding = () => {
+    const wrap = h("div", { class: "screen-scroll" });
+    wrap.appendChild(TopBar({ title: "Create Profile", subtitle: "One-time setup" }));
+
+    const initial = state.onboarding.nickname ? state.onboarding.nickname[0].toUpperCase() : "?";
+    wrap.appendChild(h("div", { class: "onb-avatar-wrap" },
+      Avatar({ initial, size: 72 }),
+    ));
+
+    const input = h("input", {
+      class: "onb-input", type: "text",
+      placeholder: "Your nickname…", maxlength: "16",
+      value: state.onboarding.nickname,
+    });
+    input.addEventListener("input", () => { state.onboarding.nickname = input.value; });
+    wrap.appendChild(h("div", { class: "onb-field" },
+      h("div", { class: "section-label" }, "Nickname"),
+      input,
+    ));
+
+    wrap.appendChild(h("div", { class: "onb-field" },
+      h("div", { class: "section-label" }, "You play as"),
+      h("div", { class: "onb-gender-row" },
+        ...["Male", "Female", "Other"].map(g =>
+          h("button", {
+            class: `onb-gender-btn ${state.onboarding.gender === g.toLowerCase() ? "sel" : ""}`,
+            type: "button",
+            onclick: () => { state.onboarding.gender = g.toLowerCase(); render(); },
+          }, g),
+        ),
+      ),
+    ));
+
+    const ready = state.onboarding.nickname.trim().length >= 2 && state.onboarding.gender;
+    wrap.appendChild(h("div", { class: "onb-actions" },
+      PitchButton({
+        label: "Create Profile", variant: "primary", full: true, iconRight: "forward",
+        disabled: !ready,
+        onClick: () => {
+          const nickname = state.onboarding.nickname.trim();
+          const gender   = state.onboarding.gender;
+          const friend_code = generateFriendCode(nickname);
+          const profile = { nickname, gender, friend_code };
+          localStorage.setItem("xo_profile", JSON.stringify(profile));
+          state.profile = profile;
+          go("code_reveal");
+          db.from("profiles").insert(profile).select().single().then(({ data }) => {
+            if (data?.id) {
+              profile.id = data.id;
+              localStorage.setItem("xo_profile", JSON.stringify(profile));
+            }
+          });
+        },
+      }),
+    ));
+
+    return wrap;
+  };
+
+  // ── CODE REVEAL ──
+  SCREENS.code_reveal = () => {
+    const wrap = h("div", { class: "screen-scroll pitch-bg-app" });
+    wrap.appendChild(TopBar({ title: "Your Pitch Code" }));
+
+    const code   = state.profile?.friend_code || "";
+    const qrUrl  = `https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=${encodeURIComponent(code)}&bgcolor=050a08&color=d4ff00`;
+
+    const card = h("div", { class: "code-card" });
+    card.appendChild(h("img", { class: "code-qr", src: qrUrl, alt: "QR for " + code, width: 220, height: 220 }));
+    card.appendChild(h("div", { class: "code-value" }, code));
+
+    const copyBtn = h("button", { class: "pbtn ghost code-copy-btn", type: "button",
+      onclick: () => {
+        navigator.clipboard?.writeText(code).then(() => {
+          copyBtn.textContent = "Copied!";
+          setTimeout(() => { copyBtn.textContent = "Copy Code"; }, 2000);
+        });
+      },
+    }, "Copy Code");
+    card.appendChild(copyBtn);
+    wrap.appendChild(card);
+
+    wrap.appendChild(h("p", { class: "code-tip" },
+      "Ask a friend to scan this QR — it drops them straight into a match with you.",
+    ));
+
+    wrap.appendChild(h("div", { class: "onb-actions" },
+      PitchButton({ label: "Start Playing", variant: "primary", full: true, iconRight: "forward", onClick: () => go("home") }),
+    ));
+
     return wrap;
   };
 
@@ -847,9 +959,9 @@
     }));
     wrap.appendChild(h("div", { style: { padding: "0 20px 8px" } },
       h("div", { class: "profile-card" },
-        Avatar({ initial: "Y", size: 56, team: "x", status: "online" }),
+        Avatar({ initial: state.profile ? state.profile.nickname[0].toUpperCase() : "Y", size: 56, team: "x", status: "online" }),
         h("div", { style: { flex: 1, minWidth: 0 } },
-          h("div", { class: "nm" }, "You_pitch"),
+          h("div", { class: "nm" }, state.profile?.nickname || "You_pitch"),
           h("div", { class: "meta" }, "Pro Pitch · #214"),
         ),
         Icon({ name: "forward", size: 18, color: "var(--fg-3)" }),
@@ -865,13 +977,18 @@
 
     wrap.appendChild(h("div", { class: "section-label" }, "Account"));
     wrap.appendChild(h("div", { class: "setting-group" },
-      SettingRow("Friend code", h("span", { class: "friend-code" }, "X8K-22M")),
+      SettingRow("Friend code", h("span", { class: "friend-code" }, state.profile?.friend_code || "—")),
       SettingRow("Privacy",      Icon({ name: "forward", size: 16, color: "var(--fg-3)" })),
       SettingRow("Notifications",Icon({ name: "forward", size: 16, color: "var(--fg-3)" })),
     ));
 
     wrap.appendChild(h("div", { style: { padding: "20px" } },
-      PitchButton({ label: "Sign out", variant: "ghost", full: true, onClick: () => go("splash") }),
+      PitchButton({ label: "Sign out", variant: "ghost", full: true, onClick: () => {
+        localStorage.removeItem("xo_profile");
+        state.profile = null;
+        state.onboarding = { nickname: "", gender: "" };
+        go("splash");
+      }}),
     ));
 
     return wrap;
