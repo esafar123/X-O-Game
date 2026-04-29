@@ -5,6 +5,7 @@ import { Avatar, PitchButton, TopBar } from "../ui/components.js";
 import { db } from "../core/db.js";
 import { generateFriendCode } from "../utils/helpers.js";
 import { GUEST_POOL } from "../data/constants.js";
+import { sanitizeText, validateNickname } from "../utils/sanitize.js";
 
 SCREENS.onboarding = () => {
   const wrap    = h("div", { class: "screen-scroll" });
@@ -20,7 +21,7 @@ SCREENS.onboarding = () => {
     placeholder: "Your nickname…", maxlength: "16",
     value: state.onboarding.nickname,
   });
-  input.addEventListener("input", () => { state.onboarding.nickname = input.value; });
+  input.addEventListener("input", () => { state.onboarding.nickname = sanitizeText(input.value); });
   wrap.appendChild(h("div", { class: "onb-field" },
     h("div", { class: "section-label" }, "Nickname"),
     input,
@@ -43,13 +44,14 @@ SCREENS.onboarding = () => {
     ),
   ));
 
-  const ready = state.onboarding.nickname.trim().length >= 2 && state.onboarding.gender;
+  const ready = validateNickname(state.onboarding.nickname) && state.onboarding.gender;
   wrap.appendChild(h("div", { class: "onb-actions" },
     PitchButton({
       label: "Create Profile", variant: "primary", full: true, iconRight: "forward",
       disabled: !ready,
       onClick: () => {
-        const nickname    = state.onboarding.nickname.trim();
+        const nickname    = validateNickname(state.onboarding.nickname);
+        if (!nickname) return;
         const gender      = state.onboarding.gender;
         const friend_code = generateFriendCode(nickname);
         const profile     = { nickname, gender, friend_code };

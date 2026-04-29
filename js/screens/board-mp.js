@@ -19,12 +19,13 @@ SCREENS.board_mp = () => {
   let isUpdating   = false;
   let lastBoardStr = JSON.stringify(board);
   let pollId       = null;
+  let channel      = null;
   const score      = state.score;
 
   const wrap = h("div", { class: "screen-scroll pitch-bg-app board-screen" });
   wrap.appendChild(TopBar({
     title: "Live Match", subtitle: "Online · 1v1",
-    leading:  IconBtn({ name: "close",  onClick: () => { clearInterval(pollId); state.score = { x: 0, o: 0 }; go("home"); } }),
+    leading:  IconBtn({ name: "close", onClick: () => { cleanup(); state.score = { x: 0, o: 0 }; go("home"); } }),
     trailing: IconBtn({ name: "more" }),
   }));
 
@@ -109,6 +110,7 @@ SCREENS.board_mp = () => {
 
   function finishSoon() {
     clearInterval(pollId);
+    channel?.unsubscribe();
     const t = setTimeout(() => {
       state.lastMatchLengthSec = elapsedSec;
       go("gameover", { result: { ...result, userMark } });
@@ -116,35 +118,67 @@ SCREENS.board_mp = () => {
     onUnmount(() => clearTimeout(t));
   }
 
+  /** Apply an incoming board snapshot from DB (Realtime or polling) */
+  const handleRemoteUpdate = (data) => {
+    if (!data || data.board === lastBoardStr || isUpdating) return;
+    if (turn === userMark) return; // it's our turn — ignore remote changes
+    lastBoardStr = data.board;
+    try {
+      const dbBoard = JSON.parse(data.board);
+      for (let i = 0; i < 9; i++) {
+        if (board[i] === null && dbBoard[i] !== null) {
+          applyMove(i, dbBoard[i]);
+          break;
+        }
+      }
+      renderAll();
+      if (result) finishSoon();
+    } catch {}
+  };
+
+  /** Polling fallback */
+  const startPolling = () => {
+    pollId = setInterval(async () => {
+      if (turn === userMark || result || isUpdating) return;
+      try {
+        const { data } = await db
+          .from("games").select("board,turn,status").eq("invite_code", gameCode).single();
+        handleRemoteUpdate(data);
+      } catch {}
+    }, 1500);
+  };
+
+  /** Supabase Realtime — falls back to polling on error */
+  const startRealtime = () => {
+    channel = db.channel(`board:${gameCode}`)
+      .on("postgres_changes", {
+        event:  "UPDATE",
+        schema: "public",
+        table:  "games",
+        filter: `invite_code=eq.${gameCode}`,
+      }, (payload) => handleRemoteUpdate(payload.new))
+      .subscribe((status) => {
+        if (status === "CHANNEL_ERROR" || status === "TIMED_OUT") {
+          channel?.unsubscribe();
+          channel = null;
+          startPolling();
+        }
+      });
+  };
+
+  const cleanup = () => { clearInterval(pollId); channel?.unsubscribe(); };
+
   const tick = setInterval(() => { elapsedSec += 1; }, 1000);
   onUnmount(() => {
     clearInterval(tick);
-    clearInterval(pollId);
-    state.lastPlayerRole = state.playerRole;   // preserve for gameover rematch routing
+    cleanup();
+    state.lastPlayerRole = state.playerRole;
     state.playerRole     = null;
     state.gameCode       = null;
     state.mpMark         = null;
   });
 
-  // Poll for opponent moves (skip when it's our turn or updating)
-  pollId = setInterval(async () => {
-    if (turn === userMark || result || isUpdating) return;
-    const { data } = await db
-      .from("games").select("board,turn,status").eq("invite_code", gameCode).single();
-    if (!data || data.board === lastBoardStr) return;
-    lastBoardStr = data.board;
-    const dbBoard = JSON.parse(data.board);
-    // Find and apply the cell that changed
-    for (let i = 0; i < 9; i++) {
-      if (board[i] === null && dbBoard[i] !== null) {
-        applyMove(i, dbBoard[i]);
-        break;
-      }
-    }
-    renderAll();
-    if (result) finishSoon();
-  }, 1500);
-
+  startRealtime();
   renderAll();
   return wrap;
 };

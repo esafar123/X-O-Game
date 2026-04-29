@@ -2,6 +2,7 @@
 // Imports register all screens into the SCREENS registry, then boots the router.
 
 import { state, render } from "./js/core/router.js";
+import "./js/core/network.js";         // offline banner + connection state
 
 // ── Screens (side-effect imports: each file calls SCREENS.xxx = ...) ──
 import "./js/screens/splash.js";

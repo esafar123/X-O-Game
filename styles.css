@@ -1065,3 +1065,67 @@ button { font: inherit; color: inherit; }
   font-family: var(--font-mono); font-size: 11px;
   color: var(--fg-3); text-transform: uppercase; letter-spacing: 0.12em;
 }
+
+/* ============================================================
+   RESPONSIVENESS
+   ============================================================ */
+
+/* Touch targets: WCAG 2.5.5 requires ≥ 44 × 44 px */
+.icon-btn {
+  width: 44px !important;
+  height: 44px !important;
+}
+.friend-action {
+  min-height: 44px;
+  padding: 10px 14px !important;
+}
+.play-pill {
+  min-height: 36px;    /* smaller is fine inside a card row */
+}
+
+/* Notch / home-bar safe-area insets on real iPhones */
+.screen-scroll {
+  padding-bottom: max(40px, env(safe-area-inset-bottom));
+}
+.footer {
+  padding-bottom: max(16px, env(safe-area-inset-bottom));
+}
+
+/* Tablet breakpoint: widen the phone shell for a more comfortable view */
+@media (min-width: 768px) {
+  .phone {
+    width: 420px !important;
+    height: 840px !important;
+  }
+}
+
+/* Large desktop: slight scaling so the frame doesn't feel lost */
+@media (min-width: 1280px) {
+  .stage { background-size: cover; }
+  .phone {
+    width: 430px !important;
+    height: 860px !important;
+  }
+}
+
+/* Landscape on small devices: let the game scroll rather than clip */
+@media (max-height: 600px) and (orientation: landscape) {
+  .phone { height: 100vh !important; border-radius: 0 !important; }
+  .stage { padding: 0 !important; }
+}
+
+/* Offline banner — shown by network.js */
+.offline-banner {
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  z-index: 999;
+  background: var(--eliminate);
+  color: #fff;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  text-align: center;
+  padding: 6px 12px;
+  pointer-events: none;
+}

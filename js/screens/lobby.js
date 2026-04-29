@@ -9,17 +9,60 @@ SCREENS.lobby = () => {
   const code    = state.profile?.friend_code || "";
   const myName  = state.profile?.nickname    || "You";
   const statusEl = h("div", { class: "tick" }, "Preparing match…");
-  let pollId = null;
+  let pollId    = null;
+  let channel   = null;
 
   const cancelFn = () => {
     clearInterval(pollId);
+    channel?.unsubscribe();
     db.from("games").update({ status: "cancelled" }).eq("invite_code", code);
     state.gameCode = null;
     go("home");
   };
-  onUnmount(() => clearInterval(pollId));
+  onUnmount(() => { clearInterval(pollId); channel?.unsubscribe(); });
 
-  // Fetch trivia question first, then write the game row
+  /** Called whenever the games row changes — via Realtime or polling */
+  const handleUpdate = (data) => {
+    if (data?.status === "active" && data.guest_name) {
+      clearInterval(pollId);
+      channel?.unsubscribe();
+      state.opponent   = { nm: data.guest_name, init: data.guest_name[0]?.toUpperCase() || "?", status: "online", meta: "Via QR invite", stats: "" };
+      state.playerRole = "host";
+      statusEl.textContent = `${data.guest_name} joined — trivia time!`;
+      setTimeout(() => { state.score = { x: 0, o: 0 }; go("trivia_mp"); }, 500);
+    }
+  };
+
+  /** Polling fallback — used when Realtime subscription fails */
+  const startPolling = () => {
+    pollId = setInterval(async () => {
+      try {
+        const { data } = await db
+          .from("games").select("status,guest_name").eq("invite_code", code).single();
+        handleUpdate(data);
+      } catch {}
+    }, 2000);
+  };
+
+  /** Subscribe via Supabase Realtime; fall back to polling on error */
+  const startRealtime = () => {
+    channel = db.channel(`lobby:${code}`)
+      .on("postgres_changes", {
+        event:  "UPDATE",
+        schema: "public",
+        table:  "games",
+        filter: `invite_code=eq.${code}`,
+      }, (payload) => handleUpdate(payload.new))
+      .subscribe((status) => {
+        if (status === "CHANNEL_ERROR" || status === "TIMED_OUT") {
+          channel?.unsubscribe();
+          channel = null;
+          startPolling(); // graceful degradation
+        }
+      });
+  };
+
+  // Fetch trivia question, upsert game row, then start listening
   (async () => {
     let triviaQ = null;
     try {
@@ -47,32 +90,23 @@ SCREENS.lobby = () => {
       q_json:      triviaQ ? JSON.stringify(triviaQ) : null,
       x_winner:    null,
     });
+
     if (error) {
       statusEl.textContent = "DB error — check Supabase games table.";
       statusEl.style.color = "var(--eliminate)";
       console.error("Lobby upsert:", error);
       return;
     }
+
     statusEl.textContent = code;
     state.gameCode = code;
-
-    // Poll every 2 s — detect when guest updates status to "active"
-    pollId = setInterval(async () => {
-      const { data } = await db
-        .from("games").select("status,guest_name").eq("invite_code", code).single();
-      if (data?.status === "active" && data.guest_name) {
-        clearInterval(pollId);
-        state.opponent   = { nm: data.guest_name, init: data.guest_name[0]?.toUpperCase() || "?", status: "online", meta: "Via QR invite", stats: "" };
-        state.playerRole = "host";
-        statusEl.textContent = `${data.guest_name} joined — trivia time!`;
-        setTimeout(() => { state.score = { x: 0, o: 0 }; go("trivia_mp"); }, 500);
-      }
-    }, 2000);
+    startRealtime();   // Realtime first; falls back to polling automatically
   })();
 
-  const wrap = h("div", { class: "screen-scroll pitch-bg-app matchmaking" });
+  // ── UI ──
+  const wrap    = h("div", { class: "screen-scroll pitch-bg-app matchmaking" });
   wrap.appendChild(TopBar({
-    title: "Waiting for Friend",
+    title:   "Waiting for Friend",
     leading: IconBtn({ name: "close", onClick: cancelFn }),
   }));
 
