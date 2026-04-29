@@ -22,6 +22,7 @@ import "./js/screens/board.js";
 import "./js/screens/gameover.js";
 import "./js/screens/leaderboard.js";
 import "./js/screens/settings.js";
+import "./js/screens/profile.js";
 
 // ── Boot ──
 document.addEventListener("DOMContentLoaded", () => {

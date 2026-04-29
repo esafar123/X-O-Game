@@ -7,13 +7,13 @@ SCREENS.settings = () => {
   const wrap = h("div", { class: "screen-scroll" });
   wrap.appendChild(TopBar({
     title:   "Settings",
-    leading: IconBtn({ name: "back", onClick: () => go("home") }),
+    leading: IconBtn({ name: "back", onClick: () => go("profile") }),
   }));
 
   // Profile row
   wrap.appendChild(h("div", { class: "setting-group" },
-    h("div", { class: "setting-row profile-row" },
-      Avatar({ initial: state.profile?.nickname?.[0]?.toUpperCase() || "?", size: 44 }),
+    h("div", { class: "setting-row profile-row", onclick: () => go("profile") },
+      Avatar({ initial: state.profile?.nickname?.[0]?.toUpperCase() || "?", size: 54 }),
       h("div", { style: { flex: 1, minWidth: 0 } },
         h("div", { class: "nm"   }, state.profile?.nickname || "You_pitch"),
         h("div", { class: "meta" }, "Pro Pitch · #214"),

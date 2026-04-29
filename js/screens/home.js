@@ -1,35 +1,85 @@
 import { SCREENS, state, go } from "../core/router.js";
 import { h } from "../utils/dom.js";
 import { Icon, IconBtn } from "../ui/icons.js";
-import { TopBar, ActionTile } from "../ui/components.js";
-import { LEAGUES } from "../data/constants.js";
+import { TopBar } from "../ui/components.js";
 
 SCREENS.home = () => {
+  const profile  = state.profile;
+  const nick     = profile?.nickname || "Player";
+  const code     = profile?.friend_code || null;
+
+  const hour     = new Date().getHours();
+  const timeTag  = hour < 12 ? "Morning" : hour < 17 ? "Afternoon" : "Evening";
+  const days     = ["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
+  const matchday = `Matchday · ${days[new Date().getDay()]}`;
+
   const wrap = h("div", { class: "screen-scroll pitch-bg-app" });
+
   wrap.appendChild(TopBar({
     title:    "Pitch XO",
-    subtitle: "Pre-season · Week 3",
-    leading:  IconBtn({ name: "settings", onClick: () => go("settings") }),
+    subtitle: matchday,
+    leading:  IconBtn({ name: "user", onClick: () => go("profile") }),
     trailing: IconBtn({ name: "friends",  onClick: () => go("friends")  }),
   }));
 
-  wrap.appendChild(h("div", { class: "streak-hero" },
-    h("div", { style: { flex: 1 } },
-      h("div", { class: "meta" }, "Current streak"),
-      h("div", { class: "num"  }, "5W"),
-      h("div", { class: "desc" }, "One more win to crack the top 200."),
-    ),
-    h("div", { class: "bolt-orb" }, Icon({ name: "bolt", size: 40, color: "var(--flood-500)" })),
-  ));
+  // ── Greeting + code pill ─────────────────────────────────────────
+  const greet = h("div", { class: "home-greet" },
+    h("div", { class: "home-greet-time" }, `${timeTag},`),
+    h("div", { class: "home-greet-name" }, nick),
+  );
+  if (code) {
+    const tapLabel = h("span", { class: "home-code-tap" }, "tap to copy");
+    const pill = h("div", { class: "home-code-pill" },
+      h("span", { class: "home-code-val" }, code),
+      h("span", { class: "home-code-dot" }, "·"),
+      tapLabel,
+    );
+    pill.onclick = () => {
+      navigator.clipboard?.writeText(code).then(() => {
+        tapLabel.textContent = "Copied!";
+        pill.classList.add("copied");
+        setTimeout(() => {
+          tapLabel.textContent = "tap to copy";
+          pill.classList.remove("copied");
+        }, 1800);
+      });
+    };
+    greet.appendChild(pill);
+  }
+  wrap.appendChild(greet);
 
-  const list = h("div", { class: "action-list" });
-  list.appendChild(ActionTile({
-    title: "Quick match", desc: "Answer a question · kick off first", icon: "bolt", accent: true,
-    onClick: () => { state.opponent = null; state.league = LEAGUES[1]; go("trivia"); },
-  }));
-  list.appendChild(ActionTile({ title: "Play a friend", desc: "3 friends online",  icon: "swords",  onClick: () => go("friends") }));
-  list.appendChild(ActionTile({ title: "Leagues",       desc: "2 of 4 unlocked",   icon: "trophy",  onClick: () => go("levels")  }));
-  list.appendChild(ActionTile({ title: "Leaderboard",   desc: "You're ranked #214", icon: "star",   onClick: () => go("leaderboard") }));
-  wrap.appendChild(list);
+  // ── Quick match hero ─────────────────────────────────────────────
+  const qm = h("div", { class: "home-qm" });
+  qm.appendChild(h("div", { class: "home-qm-eyebrow" },
+    h("span", { class: "home-qm-live" }, "LIVE"),
+    Icon({ name: "bolt", size: 13, color: "var(--pitch-900)" }),
+  ));
+  qm.appendChild(h("div", { class: "home-qm-title" }, "Kick Off"));
+  qm.appendChild(h("div", { class: "home-qm-desc" },
+    "Answer a question. Claim the X. Own the pitch.",
+  ));
+  qm.appendChild(h("button", {
+    class: "home-qm-btn", type: "button",
+    onclick: () => { state.opponent = null; go("trivia"); },
+  }, "Start Match →"));
+  wrap.appendChild(qm);
+
+  // ── 2-column grid ────────────────────────────────────────────────
+  const grid = h("div", { class: "home-grid" });
+
+  const gridCard = ({ icon, title, desc, onClick }) => {
+    const card = h("div", { class: "home-gc", onclick: onClick });
+    card.appendChild(h("div", { class: "home-gc-icon" },
+      Icon({ name: icon, size: 24, color: "var(--flood-500)" }),
+    ));
+    card.appendChild(h("div", { class: "home-gc-title" }, title));
+    card.appendChild(h("div", { class: "home-gc-desc"  }, desc));
+    return card;
+  };
+
+  grid.appendChild(gridCard({ icon: "swords", title: "Friends",  desc: "Challenge a player",  onClick: () => go("friends") }));
+  grid.appendChild(gridCard({ icon: "trophy", title: "Leagues",  desc: "2 of 4 unlocked",     onClick: () => go("levels")  }));
+
+  wrap.appendChild(grid);
   return wrap;
 };
