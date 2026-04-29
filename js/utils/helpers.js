@@ -1,9 +1,8 @@
 // Pure utility helpers
 
-export function generateFriendCode(nickname) {
-  const slug   = nickname.toUpperCase().replace(/[^A-Z]/g, "").slice(0, 4) || "PLAY";
-  const digits = String(Math.floor(1000 + Math.random() * 9000));
-  return `XO-${slug}-${digits}`;
+export function generateFriendCode() {
+  // 6-digit numeric code — easy to share verbally or in chat (e.g. 482916)
+  return String(Math.floor(100000 + Math.random() * 900000));
 }
 
 // Decode HTML entities returned by opentdb (e.g. &amp; &#039;)

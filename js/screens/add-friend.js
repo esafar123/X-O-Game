@@ -40,8 +40,9 @@ SCREENS.add_friend = () => {
 
   const input = h("input", {
     class: "onb-input af-input", type: "text",
-    placeholder: "XO-NAME-1234",
-    maxlength: "16",
+    placeholder: "e.g. 482916",
+    maxlength: "6",
+    inputmode: "numeric",
     autocomplete: "off", spellcheck: "false",
     oninput: () => { statusMsg.textContent = ""; resultArea.innerHTML = ""; },
   });
@@ -56,7 +57,7 @@ SCREENS.add_friend = () => {
     const code = validateInviteCode(raw);
 
     if (!code) {
-      statusMsg.textContent = "Enter a valid code — format XO-NAME-1234";
+      statusMsg.textContent = "Enter a 6-digit code (e.g. 482916)";
       statusMsg.style.color = "var(--eliminate)";
       return;
     }

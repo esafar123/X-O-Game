@@ -12,13 +12,13 @@ export function sanitizeText(str = "") {
 }
 
 /**
- * Validate and normalise a friend/invite code.
- * Expected format: XO-XXXX-NNNN (e.g. XO-MARK-4821)
- * Returns the normalised code, or null if invalid.
+ * Validate and normalise a friend code.
+ * Expected format: 6 digits (e.g. 482916)
+ * Returns the normalised code string, or null if invalid.
  */
 export function validateInviteCode(raw = "") {
-  const code = String(raw).trim().toUpperCase();
-  return /^XO-[A-Z]{1,6}-\d{4}$/.test(code) ? code : null;
+  const code = String(raw).trim().replace(/\s/g, "");
+  return /^\d{6}$/.test(code) ? code : null;
 }
 
 /**
