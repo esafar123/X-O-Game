@@ -15,92 +15,75 @@ SCREENS.add_friend = () => {
     leading: IconBtn({ name: "back", onClick: () => go("friends") }),
   }));
 
-  // ── Your own code (share it) ──────────────────────────────────────
-  const copyBtn = h("button", { class: "af-copy-btn", type: "button",
-    onclick: () => {
-      navigator.clipboard?.writeText(myCode).then(() => {
-        copyBtn.textContent = "Copied!";
-        setTimeout(() => {
-          copyBtn.innerHTML = "";
-          copyBtn.appendChild(Icon({ name: "plus", size: 14 }));
-          copyBtn.appendChild(document.createTextNode(" Copy"));
-        }, 1800);
-      });
-    },
-  });
+  // ── Your code ────────────────────────────────────────────────────
+  const copyBtn = h("button", { class: "af-copy-btn", type: "button" });
   copyBtn.appendChild(Icon({ name: "plus", size: 14 }));
   copyBtn.appendChild(document.createTextNode(" Copy"));
+  copyBtn.onclick = () => {
+    navigator.clipboard?.writeText(myCode).then(() => {
+      copyBtn.textContent = "Copied!";
+      setTimeout(() => {
+        copyBtn.innerHTML = "";
+        copyBtn.appendChild(Icon({ name: "plus", size: 14 }));
+        copyBtn.appendChild(document.createTextNode(" Copy"));
+      }, 1800);
+    });
+  };
 
   wrap.appendChild(h("div", { class: "af-section" },
-    h("div", { class: "section-label" }, "Your code — share it"),
+    h("div", { class: "section-label" }, "Your code"),
     h("div", { class: "af-my-code" },
       h("div", { class: "af-code-text" }, myCode || "No profile yet"),
       copyBtn,
     ),
   ));
 
-  // ── Search section ───────────────────────────────────────────────
-  wrap.appendChild(h("div", { class: "section-label", style: { marginTop: "24px" } }, "Find a player"));
+  // ── Status + results ─────────────────────────────────────────────
+  const statusMsg  = h("div", { class: "join-status af-status" });
+  const resultArea = h("div", { class: "af-result" });
+  let foundProfile = null;
 
+  const setStatus = (msg, color = "var(--eliminate)") => {
+    statusMsg.textContent = msg;
+    statusMsg.style.color = color;
+  };
+
+  // ── Search by code ───────────────────────────────────────────────
   const input = h("input", {
     class: "onb-input af-input", type: "text",
-    placeholder: "e.g. 482916",
-    maxlength: "6",
-    inputmode: "numeric",
+    placeholder: "Enter 6-digit code…",
+    maxlength: "6", inputmode: "numeric",
     autocomplete: "off", spellcheck: "false",
     oninput: () => { statusMsg.textContent = ""; resultArea.innerHTML = ""; },
   });
 
-  const statusMsg  = h("div", { class: "join-status", style: { marginTop: "8px" } });
-  const resultArea = h("div", { class: "af-result" });
-
-  let foundProfile = null;
-
-  const doSearch = rateLimit(async () => {
-    const raw  = input.value.trim();
+  const doSearch = rateLimit(async (prefillCode) => {
+    const raw  = prefillCode || input.value.trim();
     const code = validateInviteCode(raw);
 
-    if (!code) {
-      statusMsg.textContent = "Enter a 6-digit code (e.g. 482916)";
-      statusMsg.style.color = "var(--eliminate)";
-      return;
-    }
-    if (code === myCode) {
-      statusMsg.textContent = "That's your own code!";
-      statusMsg.style.color = "var(--eliminate)";
-      return;
-    }
+    if (!code) { setStatus("Enter a valid 6-digit code."); return; }
+    if (code === myCode) { setStatus("That's your own code!"); return; }
 
-    statusMsg.textContent = "Searching…";
-    statusMsg.style.color = "var(--flood-500)";
-    resultArea.innerHTML  = "";
-    foundProfile          = null;
+    setStatus("Searching…", "var(--flood-500)");
+    resultArea.innerHTML = "";
+    foundProfile         = null;
 
     const { data: profile, error } = await db
-      .from("profiles")
-      .select("nickname, friend_code")
-      .eq("friend_code", code)
-      .maybeSingle();
+      .from("profiles").select("nickname, friend_code")
+      .eq("friend_code", code).maybeSingle();
 
-    if (error || !profile) {
-      statusMsg.textContent = "No player found with that code.";
-      statusMsg.style.color = "var(--eliminate)";
-      return;
-    }
+    if (error || !profile) { setStatus("No player found with that code."); return; }
 
     const { data: existing } = await db
-      .from("friend_requests")
-      .select("status")
-      .or(
-        `and(from_code.eq.${myCode},to_code.eq.${code}),` +
-        `and(from_code.eq.${code},to_code.eq.${myCode})`
-      )
+      .from("friend_requests").select("status")
+      .or(`and(from_code.eq.${myCode},to_code.eq.${code}),and(from_code.eq.${code},to_code.eq.${myCode})`)
       .maybeSingle();
 
     if (existing) {
-      statusMsg.textContent =
-        existing.status === "accepted" ? "You're already friends!" : "Request already sent or pending.";
-      statusMsg.style.color = "var(--fg-2)";
+      setStatus(
+        existing.status === "accepted" ? "You're already friends!" : "Request already sent or pending.",
+        "var(--fg-2)",
+      );
       return;
     }
 
@@ -115,103 +98,112 @@ SCREENS.add_friend = () => {
     ));
     resultArea.appendChild(card);
     resultArea.appendChild(h("div", { style: { marginTop: "12px" } },
-      PitchButton({
-        label: "Send Friend Request", variant: "primary", full: true, icon: "plus",
-        onClick: doSend,
-      }),
+      PitchButton({ label: "Send Friend Request", variant: "primary", full: true, icon: "plus", onClick: doSend }),
     ));
   }, 1200);
 
   const doSend = rateLimit(async () => {
     if (!foundProfile || !myCode) return;
-
-    statusMsg.textContent = "Sending…";
-    statusMsg.style.color = "var(--flood-500)";
+    setStatus("Sending…", "var(--flood-500)");
 
     const { error } = await db.from("friend_requests").insert({
-      from_code: myCode,
-      to_code:   foundProfile.friend_code,
-      from_name: myName,
-      to_name:   foundProfile.nickname,
-      status:    "pending",
+      from_code: myCode, to_code: foundProfile.friend_code,
+      from_name: myName, to_name: foundProfile.nickname, status: "pending",
     });
 
     if (error) {
-      statusMsg.textContent = error.code === "23505"
-        ? "Request already sent."
-        : "Couldn't send — try again.";
-      statusMsg.style.color = "var(--eliminate)";
+      setStatus(error.code === "23505" ? "Request already sent." : "Couldn't send — try again.");
       return;
     }
 
-    const sentTo          = foundProfile.nickname;
-    resultArea.innerHTML  = "";
-    input.value           = "";
-    foundProfile          = null;
-    statusMsg.textContent = `✓ Request sent to ${sentTo}!`;
-    statusMsg.style.color = "var(--win)";
+    const sentTo         = foundProfile.nickname;
+    resultArea.innerHTML = "";
+    input.value          = "";
+    foundProfile         = null;
+    setStatus(`✓ Request sent to ${sentTo}!`, "var(--win)");
   }, 2000);
 
-  // ── QR camera scanner ────────────────────────────────────────────
-  const startScanner = () => {
-    const root    = document.querySelector("#root");
-    const canvas  = document.createElement("canvas");
-    const ctx     = canvas.getContext("2d");
-    let stream    = null;
-    let animId    = null;
-    let detected  = false;
+  input.addEventListener("keydown", (e) => { if (e.key === "Enter") doSearch(); });
+
+  wrap.appendChild(h("div", { class: "af-section", style: { marginTop: "24px" } },
+    h("div", { class: "section-label" }, "Find a player"),
+    h("div", { class: "af-search-row" },
+      input,
+      PitchButton({ label: "Search", variant: "primary", onClick: () => doSearch() }),
+    ),
+    statusMsg,
+    resultArea,
+  ));
+
+  // ── Scan QR ──────────────────────────────────────────────────────
+  if (navigator.mediaDevices?.getUserMedia) {
+    wrap.appendChild(h("div", { class: "af-section af-scan-section" },
+      h("div", { class: "section-label" }, "Or scan a QR code"),
+      h("button", { class: "af-scan-big-btn", type: "button", onclick: startScanner },
+        h("div", { class: "af-scan-big-icon" },
+          Icon({ name: "scan", size: 28, color: "var(--flood-500)" }),
+        ),
+        h("div", { class: "af-scan-big-label" }, "Open Camera"),
+        h("div", { class: "af-scan-big-sub"   }, "Scan a friend's profile QR"),
+      ),
+    ));
+  }
+
+  function startScanner() {
+    const root   = document.querySelector("#root");
+    const canvas = document.createElement("canvas");
+    const ctx    = canvas.getContext("2d", { willReadFrequently: true });
+    let stream   = null;
+    let animId   = null;
+    let done     = false;
 
     const close = () => {
-      detected = true;
-      if (animId)  cancelAnimationFrame(animId);
-      if (stream)  stream.getTracks().forEach(t => t.stop());
+      if (done) return;
+      done = true;
+      cancelAnimationFrame(animId);
+      stream?.getTracks().forEach(t => t.stop());
       overlay.remove();
     };
 
-    const handleScan = (data) => {
-      if (detected) return;
-      detected = true;
-      close();
-
-      // Extract 6-digit code from a URL ?join= param, or use raw value
+    const onDetect = (raw) => {
+      if (done) return;
+      // Parse code from ?challenge= or ?join= URL, or raw 6-digit string
       let code = null;
       try {
-        const url = new URL(data);
-        code = url.searchParams.get("join") || null;
+        const url = new URL(raw);
+        code = url.searchParams.get("challenge") || url.searchParams.get("join") || null;
       } catch {}
-      if (!code && /^\d{6}$/.test(data.trim())) code = data.trim();
+      if (!code && /^\d{6}$/.test(raw.trim())) code = raw.trim();
 
+      close();
       if (code) {
-        input.value           = code;
+        input.value = code;
         statusMsg.textContent = "";
         resultArea.innerHTML  = "";
-        doSearch();
+        doSearch(code);
       } else {
-        statusMsg.textContent = "QR code not recognised — try typing the code.";
-        statusMsg.style.color = "var(--eliminate)";
+        setStatus("QR not recognised — try typing the code manually.");
       }
     };
 
-    const tick = () => {
-      if (detected) return;
-      if (video.readyState === video.HAVE_ENOUGH_DATA) {
+    const scanFrame = () => {
+      if (done) return;
+      if (video.readyState >= 2 && video.videoWidth > 0) {
         canvas.width  = video.videoWidth;
         canvas.height = video.videoHeight;
         ctx.drawImage(video, 0, 0);
-        const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-
-        if (window.jsQR) {
-          const result = window.jsQR(imgData.data, imgData.width, imgData.height, {
-            inversionAttempts: "dontInvert",
-          });
-          if (result?.data) { handleScan(result.data); return; }
-        }
+        try {
+          const img = ctx.getImageData(0, 0, canvas.width, canvas.height);
+          const res = window.jsQR?.(img.data, img.width, img.height, { inversionAttempts: "attemptBoth" });
+          if (res?.data) { onDetect(res.data); return; }
+        } catch {}
       }
-      animId = requestAnimationFrame(tick);
+      animId = requestAnimationFrame(scanFrame);
     };
 
-    const video   = h("video",  { class: "qr-video", autoplay: true, playsinline: true, muted: true });
-    const overlay = h("div",    { class: "qr-overlay" },
+    const video   = h("video", { autoplay: true, playsinline: true, muted: true, class: "qr-video" });
+    const scanLine = h("div",  { class: "qr-scan-line" });
+    const overlay = h("div",  { class: "qr-overlay" },
       video,
       h("div", { class: "qr-dimmer qr-dimmer-top" }),
       h("div", { class: "qr-dimmer-mid" },
@@ -221,50 +213,32 @@ SCREENS.add_friend = () => {
           h("span", { class: "qr-corner qr-tr" }),
           h("span", { class: "qr-corner qr-bl" }),
           h("span", { class: "qr-corner qr-br" }),
+          scanLine,
         ),
         h("div", { class: "qr-dimmer qr-dimmer-side" }),
       ),
       h("div", { class: "qr-dimmer qr-dimmer-bot" },
-        h("div", { class: "qr-hint" }, "Point at a friend's QR code"),
+        h("div", { class: "qr-hint" }, "Point at a friend's Profile QR code"),
         h("button", { class: "qr-cancel", type: "button", onclick: close },
-          Icon({ name: "close", size: 20, color: "var(--fg-1)" }),
+          Icon({ name: "close", size: 20, color: "#fff" }),
+          h("span", { style: { marginLeft: "6px", fontSize: "13px" } }, "Cancel"),
         ),
       ),
     );
 
     root.appendChild(overlay);
 
-    navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" }, audio: false })
+    navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment", width: { ideal: 1280 } }, audio: false })
       .then(s => {
         stream = s;
         video.srcObject = s;
-        video.play();
-        video.addEventListener("loadeddata", () => { animId = requestAnimationFrame(tick); });
+        video.play().then(() => { animId = requestAnimationFrame(scanFrame); }).catch(close);
       })
       .catch(() => {
         close();
-        statusMsg.textContent = "Camera access denied. Allow camera in your browser and try again.";
-        statusMsg.style.color = "var(--eliminate)";
+        setStatus("Camera access denied — allow camera permission and try again.");
       });
-  };
-
-  // ── Layout ───────────────────────────────────────────────────────
-  input.addEventListener("keydown", (e) => { if (e.key === "Enter") doSearch(); });
-
-  const scanBtn = h("button", { class: "af-scan-btn", type: "button", onclick: startScanner },
-    Icon({ name: "scan", size: 20, color: "var(--flood-500)" }),
-  );
-
-  const searchRow = h("div", { class: "af-search-row" });
-  searchRow.appendChild(input);
-  searchRow.appendChild(scanBtn);
-  searchRow.appendChild(PitchButton({ label: "Search", variant: "primary", onClick: doSearch }));
-
-  wrap.appendChild(h("div", { class: "af-section" },
-    searchRow,
-    statusMsg,
-    resultArea,
-  ));
+  }
 
   return wrap;
 };
