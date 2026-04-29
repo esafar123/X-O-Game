@@ -25,3 +25,6 @@ Thumbs.db
 # Claude local
 .claude/
 .vercel
+
+# Design reference (internal docs, not part of the shipped game)
+pitch-x-o-design-system/
