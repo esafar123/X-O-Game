@@ -103,13 +103,15 @@ SCREENS.friends = () => {
           onAccept: async () => {
             await db.from("friend_requests")
               .update({ status: "accepted" })
-              .eq("id", req.id);
+              .eq("from_code", req.from_code)
+              .eq("to_code", myCode);
             load();
           },
           onDecline: async () => {
             await db.from("friend_requests")
               .delete()
-              .eq("id", req.id);
+              .eq("from_code", req.from_code)
+              .eq("to_code", myCode);
             load();
           },
         }));
@@ -128,9 +130,10 @@ SCREENS.friends = () => {
         friendsEl.appendChild(FriendRow({
           name: friendName,
           meta: friendCode,
-          onChallenge: () => go("matchmaking", {
-            opponent: { nm: friendName, init: friendName[0]?.toUpperCase() || "?", status: "online", meta: "Friend", stats: "" },
-          }),
+          onChallenge: () => {
+            state.challengeCode = friendCode;
+            go("challenge");
+          },
         }));
       }
     } else if (incoming.length === 0) {

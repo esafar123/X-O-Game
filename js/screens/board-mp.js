@@ -118,21 +118,31 @@ SCREENS.board_mp = () => {
     onUnmount(() => clearTimeout(t));
   }
 
+  /** Normalise board from DB — handles text (string) and jsonb (array) columns */
+  const parseBoard = (raw) => {
+    if (!raw) return null;
+    if (Array.isArray(raw)) return raw;
+    try { return JSON.parse(raw); } catch { return null; }
+  };
+  const boardStr = (raw) =>
+    typeof raw === "string" ? raw : JSON.stringify(raw);
+
   /** Apply an incoming board snapshot from DB (Realtime or polling) */
   const handleRemoteUpdate = (data) => {
-    if (!data || data.board === lastBoardStr || isUpdating) return;
-    lastBoardStr = data.board;
-    try {
-      const dbBoard = JSON.parse(data.board);
-      for (let i = 0; i < 9; i++) {
-        if (board[i] === null && dbBoard[i] !== null) {
-          applyMove(i, dbBoard[i]);
-          break;
-        }
+    if (!data?.board) return;
+    const incoming = boardStr(data.board);
+    if (incoming === lastBoardStr || isUpdating) return;
+    const dbBoard = parseBoard(data.board);
+    if (!dbBoard) return;
+    lastBoardStr = incoming;
+    for (let i = 0; i < 9; i++) {
+      if (board[i] === null && dbBoard[i] !== null) {
+        applyMove(i, dbBoard[i]);
+        break;
       }
-      renderAll();
-      if (result) finishSoon();
-    } catch {}
+    }
+    renderAll();
+    if (result) finishSoon();
   };
 
   /** Safety polling — always runs alongside Realtime to catch missed events */
@@ -164,8 +174,11 @@ SCREENS.board_mp = () => {
   const syncInitialBoard = async () => {
     const { data } = await db
       .from("games").select("board,status").eq("invite_code", gameCode).single();
-    if (!data?.board || data.board === lastBoardStr || data.status === "finished") return;
-    const dbBoard = JSON.parse(data.board);
+    if (!data?.board || data.status === "finished") return;
+    const incoming = boardStr(data.board);
+    if (incoming === lastBoardStr) return;
+    const dbBoard = parseBoard(data.board);
+    if (!dbBoard) return;
     let changed = false;
     for (let i = 0; i < 9; i++) {
       if (board[i] === null && dbBoard[i] !== null) {
@@ -174,7 +187,7 @@ SCREENS.board_mp = () => {
       }
     }
     if (!changed) return;
-    lastBoardStr = data.board;
+    lastBoardStr = incoming;
     const moveCount = board.filter(Boolean).length;
     turn   = moveCount % 2 === 0 ? "x" : "o";
     result = checkWin(board);
